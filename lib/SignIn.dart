@@ -71,16 +71,20 @@ class _SignInState extends State<SignIn>{
                         minHeight: viewportConstraints.maxHeight,
                       ),
                       child: Stack(
-                        alignment: AlignmentDirectional.center,
+                        alignment: AlignmentDirectional.topStart,
                         children: <Widget>[
-                          Center(
-                            child: Image.asset(
-                              'assets/Cujae.png',
-                              width: 300,
-                              color: Colors.white.withOpacity(0.3),
-                              colorBlendMode: BlendMode.modulate,
-                              //opacity: ,
-                            ),
+                          Column(
+                            children: <Widget>[
+                              SizedBox(height: _height * 0.265,),
+                              Center(
+                                child: Image.asset(
+                                  'assets/Cujae.png',
+                                  width: 300,
+                                  color: Colors.white.withOpacity(0.2),
+                                  colorBlendMode: BlendMode.modulate,
+                                ),
+                              ),
+                            ],
                           ),
                           Column(
                             mainAxisAlignment: MainAxisAlignment.start,
@@ -101,7 +105,7 @@ class _SignInState extends State<SignIn>{
                                     errorText: _anyError ? showMessageError() : null,
                                     labelText: 'Inserte su carnet de identidad',
                                     labelStyle: _focused ? TextStyle(fontSize: 16, color: Colors.green[600]) : TextStyle(fontSize: 16, color: Colors.green[900]),
-                                    fillColor: Colors.green[100],
+                                    fillColor: Colors.green[50],
                                     filled: true,
                                     enabledBorder: OutlineInputBorder(
                                       borderSide: BorderSide(

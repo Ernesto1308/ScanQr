@@ -126,7 +126,7 @@ class _UrlState extends State<Url>{
                            Image.asset(
                              "assets/Cujae.png",
                              width: 300,
-                             color: Colors.white.withOpacity(0.3),
+                             color: Colors.white.withOpacity(0.2),
                              colorBlendMode: BlendMode.modulate,
                            ),
                          ],
