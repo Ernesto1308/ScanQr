@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:dart_ping/dart_ping.dart';
 import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Url extends StatefulWidget {
@@ -26,6 +28,11 @@ class _UrlState extends State<Url>{
   SingingCharacterSendData _characterSendData = SingingCharacterSendData.Automatico;
   bool _firstBuild = true;
   double _height;
+  double _width;
+  bool _isConected = true;
+  bool _active = false;
+  FToast _fToast;
+  bool _anyError = false;
 
   String _platformVersion = 'Unknown',
       _modelName = "",
@@ -38,6 +45,8 @@ class _UrlState extends State<Url>{
     _loadText();
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
+    _fToast = FToast();
+    _fToast.init(context);
     super.initState();
   }
 
@@ -91,6 +100,7 @@ class _UrlState extends State<Url>{
   Widget build(BuildContext context) {
     if (_firstBuild){
       _height = MediaQuery.of(context).size.height;
+      _width = MediaQuery.of(context).size.width;
       _firstBuild = false;
     }
 
@@ -125,7 +135,7 @@ class _UrlState extends State<Url>{
                            SizedBox(height: _height * 0.235,),
                            Image.asset(
                              "assets/Cujae.png",
-                             width: 300,
+                             width: _width * 0.83,
                              color: Colors.white.withOpacity(0.2),
                              colorBlendMode: BlendMode.modulate,
                            ),
@@ -147,9 +157,9 @@ class _UrlState extends State<Url>{
                             controller: _controller,
                             focusNode: _node,
                             decoration: InputDecoration(
-                              errorText: _fieldEmpty || _invalidUrl ? showMessageError() : null,
+                              errorText: _anyError ? showMessageError() : null,
                               labelText: 'Inserte la Url',
-                              labelStyle: _focused ? TextStyle(fontSize: 16, color: Colors.green[600]) : TextStyle(fontSize: 16, color: Colors.green[900]),
+                              labelStyle: setLabelStyle(),
                               fillColor: Colors.green[50],
                               filled: true,
                               enabledBorder: OutlineInputBorder(
@@ -339,18 +349,25 @@ class _UrlState extends State<Url>{
         backgroundColor: Colors.green[800],
         onPressed: () async {
           bool data = _controller.text.startsWith("w") ? await _urlValidator() : await _launchURL();
+          bool internet = await InternetConnectionChecker().hasConnection;
+
           setState(() {
-            if(!_invalidUrl && !_fieldEmpty && _controller.text != "") {
-              Navigator.pushNamed(context, '/scanner', arguments: {
-                'address': _controller.text,
-                'mode': _characterAccess.name,
-                'identifier': _manufacturerName + " " + _modelName + " " + _productName,
-                'sendDataMode': _characterSendData.name
-              });
-            }else{
               errorHandler(data);
-            }
+              _isConected = internet;
           });
+
+          if(!_invalidUrl && !_fieldEmpty && _controller.text != "" && _isConected) {
+            Navigator.pushNamed(context, '/scanner', arguments: {
+              'address': _controller.text,
+              'mode': _characterAccess.name,
+              'identifier': _manufacturerName + " " + _modelName + " " + _productName,
+              'sendDataMode': _characterSendData.name
+            });
+          } else if(!_isConected && !_active){
+            _active = true;
+            _showToast();
+            Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
+          }
         },
         child: const Icon(
           Icons.camera_enhance_outlined,
@@ -371,6 +388,8 @@ class _UrlState extends State<Url>{
       _invalidUrl = false;
       _fieldEmpty = false;
     }
+
+    _anyError = _fieldEmpty || _invalidUrl;
   }
 
   String showMessageError(){
@@ -413,5 +432,57 @@ class _UrlState extends State<Url>{
     setState(() {
       prefs.setString('urlSaved', _controller.text);
     });
+  }
+
+  TextStyle setLabelStyle(){
+    TextStyle result;
+
+    if(_focused){
+      result = TextStyle(fontSize: 16, color: Colors.green[600]);
+    } else{
+      result = TextStyle(fontSize: 16, color: Colors.green[900]);
+    }
+
+    if (_anyError){
+      result = TextStyle(fontSize: 16, color: Colors.red);
+    }
+
+    return result;
+  }
+
+  _showToast() {
+    Widget toast = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25.0),
+        color: Colors.yellow,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children:
+        [
+          const Icon(Icons.wifi_off_outlined),
+          SizedBox(width: _width * 0.02,),
+          const Text(
+            "El dispositivo no tiene\n acceso a Internet",
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+
+    // Custom Toast Position
+    _fToast.showToast(
+        child: toast,
+        toastDuration: const Duration(milliseconds: 2500),
+        positionedToastBuilder: (context, child) {
+          return Positioned(
+            child: child,
+            bottom: _height * 0.13,
+            left: _width * 0.2,
+            right: _width * 0.2,
+          );
+        });
   }
 }

@@ -1,5 +1,7 @@
 // @dart=2.9
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 
 class SignIn extends StatefulWidget{
   const SignIn({Key key}) : super(key: key);
@@ -19,12 +21,18 @@ class _SignInState extends State<SignIn>{
   final List<String> _numbers = ['0','1','2','3','4','5','6','7','8','9'];
   bool _firstBuild = true;
   double _height;
+  double _width;
+  bool _isConected = true;
+  bool _active = false;
+  FToast _fToast;
 
   @override
   void initState() {
     super.initState();
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
+    _fToast = FToast();
+    _fToast.init(context);
   }
 
   @override
@@ -57,6 +65,7 @@ class _SignInState extends State<SignIn>{
   Widget build(BuildContext context) {
     if (_firstBuild){
       _height = MediaQuery.of(context).size.height;
+      _width = MediaQuery.of(context).size.width;
       _firstBuild = false;
     }
 
@@ -79,7 +88,7 @@ class _SignInState extends State<SignIn>{
                               Center(
                                 child: Image.asset(
                                   'assets/Cujae.png',
-                                  width: 300,
+                                  width: _width * 0.83,
                                   color: Colors.white.withOpacity(0.2),
                                   colorBlendMode: BlendMode.modulate,
                                 ),
@@ -104,7 +113,7 @@ class _SignInState extends State<SignIn>{
                                   decoration: InputDecoration(
                                     errorText: _anyError ? showMessageError() : null,
                                     labelText: 'Inserte su carnet de identidad',
-                                    labelStyle: _focused ? TextStyle(fontSize: 16, color: Colors.green[600]) : TextStyle(fontSize: 16, color: Colors.green[900]),
+                                    labelStyle: setLabelStyle(),
                                     fillColor: Colors.green[50],
                                     filled: true,
                                     enabledBorder: OutlineInputBorder(
@@ -131,21 +140,27 @@ class _SignInState extends State<SignIn>{
                                   },
                                 ),
                               ),
-                              SizedBox(height: _height * 0.2,),
+                              SizedBox(height: _height * 0.3,),
                               ElevatedButton(
                                 style: raisedButtonStyle,
-                                onPressed: () {
+                                onPressed: () async {
+                                  bool internet = await InternetConnectionChecker().hasConnection;
+
                                   setState(() {
                                     errorHandler();
+                                    _isConected = internet;
                                   });
 
-                                  if (!_anyError){
+                                  if (!_anyError && _isConected){
                                     Navigator.pushNamed(context, '/url');
+                                  } else if(!_isConected && !_active){
+                                    _active = true;
+                                    _showToast();
+                                    Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
                                   }
                                 },
                                 child: const Text('Enrolar'),
                               ),
-                              const SizedBox(height: 100,),
                             ],
                           ),
                         ],
@@ -156,6 +171,22 @@ class _SignInState extends State<SignIn>{
         ),
       ),
     );
+  }
+
+  TextStyle setLabelStyle(){
+    TextStyle result;
+
+    if(_focused){
+      result = TextStyle(fontSize: 16, color: Colors.green[600]);
+    } else{
+      result = TextStyle(fontSize: 16, color: Colors.green[900]);
+    }
+
+    if (_anyError){
+      result = const TextStyle(fontSize: 16, color: Colors.red);
+    }
+
+    return result;
   }
 
   void errorHandler() {
@@ -208,5 +239,41 @@ class _SignInState extends State<SignIn>{
     }
 
     return result;
+  }
+
+  _showToast() {
+    Widget toast = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25.0),
+        color: Colors.yellow,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children:
+        [
+          const Icon(Icons.wifi_off_outlined),
+          SizedBox(width: _width * 0.02,),
+          const Text(
+            "El dispositivo no tiene\n acceso a Internet",
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+
+    // Custom Toast Position
+    _fToast.showToast(
+        child: toast,
+        toastDuration: const Duration(milliseconds: 2500),
+        positionedToastBuilder: (context, child) {
+          return Positioned(
+            child: child,
+            bottom: _height * 0.2,
+            left: _width * 0.2,
+            right: _width * 0.2,
+          );
+        });
   }
 }
