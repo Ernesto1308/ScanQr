@@ -45,8 +45,6 @@ class _UrlState extends State<Url>{
     _loadText();
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
-    _fToast = FToast();
-    _fToast.init(context);
     super.initState();
   }
 
@@ -98,6 +96,9 @@ class _UrlState extends State<Url>{
 
   @override
   Widget build(BuildContext context) {
+    _fToast = FToast();
+    _fToast.init(context);
+
     if (_firstBuild){
       _height = MediaQuery.of(context).size.height;
       _width = MediaQuery.of(context).size.width;
@@ -444,7 +445,7 @@ class _UrlState extends State<Url>{
     }
 
     if (_anyError){
-      result = TextStyle(fontSize: 16, color: Colors.red);
+      result = const TextStyle(fontSize: 16, color: Colors.red);
     }
 
     return result;
@@ -455,7 +456,7 @@ class _UrlState extends State<Url>{
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(25.0),
-        color: Colors.yellow,
+        color: Colors.yellow[700],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

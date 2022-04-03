@@ -246,7 +246,7 @@ class _SignInState extends State<SignIn>{
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(25.0),
-        color: Colors.yellow,
+        color: Colors.yellow[700],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

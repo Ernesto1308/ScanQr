@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -26,9 +27,37 @@ class _QRViewExampleState extends State<QRViewExample> {
   String _result;
   int _counter;
   FToast _fToast;
+  FToast _fToastNoInternet;
   double _width;
   double _height;
   bool _firstBuild = true;
+  bool _isConected = true;
+  bool _active = false;
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    if (Platform.isAndroid) {
+      controller.pauseCamera();
+    }
+    controller.resumeCamera();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fToast = FToast();
+    _fToast.init(context);
+    _fToastNoInternet = FToast();
+    _fToastNoInternet.init(context);
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +251,20 @@ class _QRViewExampleState extends State<QRViewExample> {
           child: IconButton(
             splashRadius: 25,
             onPressed: () async {
-              await callPost(data);
+              bool internet = await InternetConnectionChecker().hasConnection;
+
+              setState(() {
+                _isConected = internet;
+              });
+
+              if (_isConected){
+                await callPost(data);
+              } else if(!_isConected && !_active){
+                _active = true;
+                _showToastNoInternet();
+                Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
+              }
+
               setState(() {
                 FlutterRingtonePlayer.play(
                     android: AndroidSounds.notification,
@@ -241,28 +283,6 @@ class _QRViewExampleState extends State<QRViewExample> {
         ),
       ],
     );
-  }
-
-  @override
-  void reassemble() {
-    super.reassemble();
-    if (Platform.isAndroid) {
-      controller.pauseCamera();
-    }
-    controller.resumeCamera();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _fToast = FToast();
-    _fToast.init(context);
-  }
-
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
   }
 
   Future<bool> _createPost(String address,String identifier, String mode) async {
@@ -300,9 +320,17 @@ class _QRViewExampleState extends State<QRViewExample> {
   }
 
   Future<void> callPost(Map data) async {
-    _accepted = await _createPost(data['address'], data['identifier'],data['mode']);
-    _showToast();
-    _message = null;
+    bool internet = await InternetConnectionChecker().hasConnection;
+
+    if (internet){
+      _accepted = await _createPost(data['address'], data['identifier'],data['mode']);
+      _showToast();
+      _message = null;
+    } else if(!internet && !_active){
+      _active = true;
+      _showToastNoInternet();
+      Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
+    }
   }
 
   _showToast() {
@@ -339,6 +367,42 @@ class _QRViewExampleState extends State<QRViewExample> {
             bottom: _height * 0.27,
             left: _width * 0.17,
             right: _width * 0.17,
+          );
+        });
+  }
+
+  _showToastNoInternet() {
+    Widget toast = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25.0),
+        color: Colors.yellow[700],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children:
+        [
+          const Icon(Icons.wifi_off_outlined),
+          SizedBox(width: _width * 0.02,),
+          const Text(
+            "El dispositivo no tiene\n acceso a Internet",
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+
+    // Custom Toast Position
+    _fToastNoInternet.showToast(
+        child: toast,
+        toastDuration: const Duration(milliseconds: 2500),
+        positionedToastBuilder: (context, child) {
+          return Positioned(
+            child: child,
+            bottom: _height * 0.27,
+            left: _width * 0.2,
+            right: _width * 0.2,
           );
         });
   }
