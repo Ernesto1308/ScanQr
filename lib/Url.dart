@@ -1,6 +1,5 @@
 // @dart=2.9
 import 'package:device_information/device_information.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:dart_ping/dart_ping.dart';
 import 'package:flutter/services.dart';
@@ -76,7 +75,7 @@ class _UrlState extends State<Url>{
       platformVersion = await DeviceInformation.platformVersion;
       modelName = await DeviceInformation.deviceModel;
       manufacturer = await DeviceInformation.deviceManufacturer;
-      _productName = await DeviceInformation.productName;
+      productName = await DeviceInformation.productName;
     } on PlatformException catch (e) {
       platformVersion = e.message;
     }
@@ -90,7 +89,7 @@ class _UrlState extends State<Url>{
       _platformVersion = "Running on :$platformVersion";
       _modelName = modelName;
       _manufacturerName = manufacturer;
-      _productName = _productName;
+      _productName = productName;
     });
   }
 

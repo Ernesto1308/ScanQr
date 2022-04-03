@@ -125,13 +125,13 @@ class _QRViewExampleState extends State<QRViewExample> {
 
           firstTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
             _counter = timer.tick;
-            if(_counter == 10) {
+            if(_counter == 5) {
               timer.cancel();
             }
           });
         });
       } else {
-        if(_counter == 10) {
+        if(_counter == 5) {
           if(secondTimer.isActive){
             secondTimer.cancel();
           }
@@ -143,7 +143,7 @@ class _QRViewExampleState extends State<QRViewExample> {
 
             secondTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
               _counter = timer.tick;
-              if(_counter == 10) {
+              if(_counter == 5) {
                 timer.cancel();
               }
             });

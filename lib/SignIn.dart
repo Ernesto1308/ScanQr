@@ -17,8 +17,8 @@ class _SignInState extends State<SignIn>{
   bool _fieldEmpty = false;
   bool _invalidLength = false;
   bool _notContainJustNumbers = false;
+  bool _invalidDateCi = false;
   bool _anyError = false;
-  final List<String> _numbers = ['0','1','2','3','4','5','6','7','8','9'];
   bool _firstBuild = true;
   double _height;
   double _width;
@@ -191,27 +191,36 @@ class _SignInState extends State<SignIn>{
 
   void errorHandler() {
     String ci = _controller.text;
-    _notContainJustNumbers = _validCi(ci);
 
     if(ci.isEmpty) {
       _notContainJustNumbers = false;
       _invalidLength = false;
+      _invalidDateCi = false;
       _fieldEmpty = true;
-    } else if(_notContainJustNumbers){
+    } else if(inValidCi(ci)){
       _fieldEmpty = false;
       _invalidLength = false;
+      _invalidDateCi = false;
+      _notContainJustNumbers = true;
     }
     else if(ci.length < 11){
       _fieldEmpty = false;
       _notContainJustNumbers = false;
+      _invalidDateCi = false;
       _invalidLength = true;
-    } else {
+    } else if(!verifyDateCi(ci)){
       _fieldEmpty = false;
       _notContainJustNumbers = false;
       _invalidLength = false;
+      _invalidDateCi = true;
+    }else {
+      _fieldEmpty = false;
+      _notContainJustNumbers = false;
+      _invalidLength = false;
+      _invalidDateCi = false;
     }
 
-    _anyError = _fieldEmpty || _notContainJustNumbers || _invalidLength;
+    _anyError = _fieldEmpty || _notContainJustNumbers || _invalidLength || _invalidDateCi;
   }
 
   String showMessageError(){
@@ -223,19 +232,43 @@ class _SignInState extends State<SignIn>{
       stringError = "El carnet de identidad solo puede tener 11 dígitos";
     } else if(_notContainJustNumbers){
       stringError = "El carnet de identidad solo puede tener dígitos";
+    } else {
+      stringError = "Formato de fecha incorrecto";
     }
 
     return stringError;
   }
 
-  bool _validCi(String ci) {
+  bool inValidCi(String ci) {
     bool result = false;
+    List<String> numbers = ['0','1','2','3','4','5','6','7','8','9'];
 
     for(int i = 0; i < ci.length && !result; i++) {
-      if(!_numbers.contains(ci[i])){
+      if(!numbers.contains(ci[i])){
         result = true;
         break;
       }
+    }
+
+    return result;
+  }
+
+  bool verifyDateCi(String ci){
+    bool result = true;
+    List<int> months30 = [4,6,9,11];
+
+    int day = int.parse(ci[4] + ci[5]);
+    int year = int.parse(ci[0] + ci[1]);
+    int month = int.parse(ci[2] + ci[3]);
+
+    if (day > 31 || month > 12 || day == 0 || month == 0){
+      result = false;
+    } else if (months30.contains(month) && day == 31){
+      result = false;
+    } else if (month == 2 && year % 4 != 0 && day > 28){
+      result = false;
+    } else if (month == 2 && year % 4 == 0 && day > 29){
+      result = false;
     }
 
     return result;
