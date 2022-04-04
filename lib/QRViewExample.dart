@@ -285,7 +285,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     );
   }
 
-  Future<bool> _createPost(String address,String identifier, String mode) async {
+  Future<bool> _createPost(String address, String mode) async {
     try {
       final response = await http.post(
         Uri.parse(address),
@@ -295,7 +295,6 @@ class _QRViewExampleState extends State<QRViewExample> {
         body: jsonEncode(<String, String>{
           'qr': _message,
           'mode': mode,
-          'dev': identifier
         }),
       );
 
@@ -323,7 +322,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     bool internet = await InternetConnectionChecker().hasConnection;
 
     if (internet){
-      _accepted = await _createPost(data['address'], data['identifier'],data['mode']);
+      _accepted = await _createPost(data['address'],data['mode']);
       _showToast();
       _message = null;
     } else if(!internet && !_active){

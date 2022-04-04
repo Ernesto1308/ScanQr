@@ -1,7 +1,12 @@
 // @dart=2.9
+import 'dart:convert';
+import 'package:device_information/device_information.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:http/http.dart' as http;
 
 class SignIn extends StatefulWidget{
   const SignIn({Key key}) : super(key: key);
@@ -25,14 +30,17 @@ class _SignInState extends State<SignIn>{
   bool _isConected = true;
   bool _active = false;
   FToast _fToast;
+  String _manufacturerName = "",
+      _productName = "";
 
   @override
   void initState() {
-    super.initState();
+    initPlatformState();
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
     _fToast = FToast();
     _fToast.init(context);
+    super.initState();
   }
 
   @override
@@ -152,6 +160,19 @@ class _SignInState extends State<SignIn>{
                                   });
 
                                   if (!_anyError && _isConected){
+                                    String jsonString = await _loadPasswordAsset();
+                                    final jsonResponse = json.decode(jsonString);
+                                    String token = await createJsonWebToken(jsonResponse);
+                                    /*final response = await http.post(
+                                    Uri.parse("www.google.com"),
+                                    headers: <String, String>{
+                                      'Content-Type': 'application/json; charset=UTF-8',
+                                    },
+                                    body: jsonEncode(<String, String>{
+                                      'token': token,
+                                    }),
+                                    );*/
+                                    verifyJsonWebToken(jsonResponse, token);
                                     Navigator.pushNamed(context, '/url');
                                   } else if(!_isConected && !_active){
                                     _active = true;
@@ -171,6 +192,68 @@ class _SignInState extends State<SignIn>{
         ),
       ),
     );
+  }
+
+  // Platform messages are asynchronous, so we initialize in an async method.
+  Future<void> initPlatformState() async {
+    // Platform messages may fail,
+    // so we use a try/catch PlatformException.
+    String manufacturer = '',
+        productName = '';
+    try {
+      manufacturer = await DeviceInformation.deviceManufacturer;
+      productName = await DeviceInformation.productName;
+    } on PlatformException catch (e) {
+      e.message;
+    }
+
+    // If the widget was removed from the tree while the asynchronous platform
+    // message was in flight, we want to discard the reply rather than calling
+    // setState to update our non-existent appearance.
+    if (!mounted) return;
+
+    setState(() {
+      _manufacturerName = manufacturer;
+      _productName = productName;
+    });
+  }
+
+  Future<String> _loadPasswordAsset() async {
+    return await rootBundle.loadString('passphrase/password');
+  }
+
+  Future<String> createJsonWebToken(Map jsonResponse) async {
+    String token;
+
+    /* Sign */ {
+      // Create a json web token
+      final jwt = JWT(
+        {
+          'info': _controller.text + " " + _manufacturerName + " " + _productName,
+        },
+      );
+
+      // Sign it
+      token = jwt.sign(SecretKey(jsonResponse['password']));
+      //print('Signed token: $token\n');
+    }
+
+    return token;
+  }
+
+  void verifyJsonWebToken(Map jsonResponse, String token){
+    /* Verify */ {
+
+      try {
+        // Verify a token
+        final jwt = JWT.verify(token, SecretKey(jsonResponse['password']));
+        print('Payload: ${jwt.payload['info']}');
+      } on JWTExpiredError {
+        Exception('jwt expired');
+      } on JWTError catch (ex) {
+        Exception(ex.message); // ex: invalid signature
+      }
+    }
   }
 
   TextStyle setLabelStyle(){

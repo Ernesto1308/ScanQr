@@ -1,8 +1,6 @@
 // @dart=2.9
-import 'package:device_information/device_information.dart';
 import 'package:flutter/material.dart';
 import 'package:dart_ping/dart_ping.dart';
-import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,14 +31,8 @@ class _UrlState extends State<Url>{
   FToast _fToast;
   bool _anyError = false;
 
-  String _platformVersion = 'Unknown',
-      _modelName = "",
-      _manufacturerName = "",
-      _productName = "";
-
   @override
   void initState() {
-    initPlatformState();
     _loadText();
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
@@ -61,36 +53,6 @@ class _UrlState extends State<Url>{
         _focused = _node.hasFocus;
       });
     }
-  }
-
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    // Platform messages may fail,
-    // so we use a try/catch PlatformException.
-    String platformVersion,
-        modelName = '',
-        manufacturer = '',
-        productName = '';
-    try {
-      platformVersion = await DeviceInformation.platformVersion;
-      modelName = await DeviceInformation.deviceModel;
-      manufacturer = await DeviceInformation.deviceManufacturer;
-      productName = await DeviceInformation.productName;
-    } on PlatformException catch (e) {
-      platformVersion = e.message;
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = "Running on :$platformVersion";
-      _modelName = modelName;
-      _manufacturerName = manufacturer;
-      _productName = productName;
-    });
   }
 
   @override
@@ -360,7 +322,6 @@ class _UrlState extends State<Url>{
             Navigator.pushNamed(context, '/scanner', arguments: {
               'address': _controller.text,
               'mode': _characterAccess.name,
-              'identifier': _manufacturerName + " " + _modelName + " " + _productName,
               'sendDataMode': _characterSendData.name
             });
           } else if(!_isConected && !_active){
