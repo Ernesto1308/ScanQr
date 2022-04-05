@@ -1,12 +1,8 @@
 // @dart=2.9
-import 'dart:convert';
-import 'package:device_information/device_information.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
-import 'package:http/http.dart' as http;
+import 'package:scanqr/Services.dart';
 
 class SignIn extends StatefulWidget{
   const SignIn({Key key}) : super(key: key);
@@ -16,28 +12,33 @@ class SignIn extends StatefulWidget{
 }
 
 class _SignInState extends State<SignIn>{
-  final _controller = TextEditingController();
-  FocusNode _node;
-  bool _focused = false;
-  bool _fieldEmpty = false;
+  final _controllerUrl = TextEditingController();
+  FocusNode _nodeUrl;
+  bool _focusedUrl = false;
+  bool _fieldEmptyUrl = false;
+  bool _invalidUrl = false;
+  bool _anyErrorUrl = false;
+  final _controllerCi = TextEditingController();
+  FocusNode _nodeCi;
+  bool _focusedCi = false;
+  bool _fieldEmptyCi = false;
   bool _invalidLength = false;
   bool _notContainJustNumbers = false;
   bool _invalidDateCi = false;
-  bool _anyError = false;
+  bool _anyErrorCi = false;
   bool _firstBuild = true;
   double _height;
   double _width;
   bool _isConected = true;
   bool _active = false;
   FToast _fToast;
-  String _manufacturerName = "",
-      _productName = "";
 
   @override
   void initState() {
-    initPlatformState();
-    _node = FocusNode();
-    _node.addListener(_handleFocusChange);
+    _nodeUrl = FocusNode();
+    _nodeUrl.addListener(_handleFocusChangeUrl);
+    _nodeCi = FocusNode();
+    _nodeCi.addListener(_handleFocusChangeCi);
     _fToast = FToast();
     _fToast.init(context);
     super.initState();
@@ -45,16 +46,27 @@ class _SignInState extends State<SignIn>{
 
   @override
   void dispose() {
-    _node.removeListener(_handleFocusChange);
-    _node.dispose();
-    _controller.dispose();
+    _nodeUrl.removeListener(_handleFocusChangeUrl);
+    _nodeUrl.dispose();
+    _controllerUrl.dispose();
+    _nodeCi.removeListener(_handleFocusChangeCi);
+    _nodeCi.dispose();
+    _controllerCi.dispose();
     super.dispose();
   }
 
-  void _handleFocusChange() {
-    if (_node.hasFocus != _focused) {
+  void _handleFocusChangeUrl() {
+    if (_nodeUrl.hasFocus != _focusedUrl) {
       setState(() {
-        _focused = _node.hasFocus;
+        _focusedUrl = _nodeUrl.hasFocus;
+      });
+    }
+  }
+
+  void _handleFocusChangeCi() {
+    if (_nodeCi.hasFocus != _focusedCi) {
+      setState(() {
+        _focusedCi = _nodeCi.hasFocus;
       });
     }
   }
@@ -78,238 +90,204 @@ class _SignInState extends State<SignIn>{
     }
 
     return Scaffold(
-      body: DefaultTextStyle(
-          style: Theme.of(context).textTheme.bodyText2,
-          child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints viewportConstraints) {
-                return SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: viewportConstraints.maxHeight,
-                      ),
-                      child: Stack(
-                        alignment: AlignmentDirectional.topStart,
-                        children: <Widget>[
-                          Column(
-                            children: <Widget>[
-                              SizedBox(height: _height * 0.265,),
-                              Center(
-                                child: Image.asset(
-                                  'assets/Cujae.png',
-                                  width: _width * 0.83,
-                                  color: Colors.white.withOpacity(0.2),
-                                  colorBlendMode: BlendMode.modulate,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: <Widget> [
-                              SizedBox(height: _height * 0.38,),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 15),
-                                child: Text("Es necesario que se registre en nuestra plataforma, por favor introduzca su número de identidad"),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                child: TextField(
-                                  controller: _controller,
-                                  maxLength: 11,
-                                  focusNode: _node,
-                                  decoration: InputDecoration(
-                                    errorText: _anyError ? showMessageError() : null,
-                                    labelText: 'Inserte su carnet de identidad',
-                                    labelStyle: setLabelStyle(),
-                                    fillColor: Colors.green[50],
-                                    filled: true,
-                                    enabledBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        style: BorderStyle.solid,
-                                        color: Colors.green[900],
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        style: BorderStyle.solid,
-                                        color: Colors.green[600],
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    border: const OutlineInputBorder(),
-                                  ),
-                                  cursorColor: Colors.grey,
-                                  onSubmitted: (text) {
-                                    setState(() {
-                                      errorHandler();
-                                    });
-                                  },
-                                ),
-                              ),
-                              SizedBox(height: _height * 0.3,),
-                              ElevatedButton(
-                                style: raisedButtonStyle,
-                                onPressed: () async {
-                                  bool internet = await InternetConnectionChecker().hasConnection;
-
-                                  setState(() {
-                                    errorHandler();
-                                    _isConected = internet;
-                                  });
-
-                                  if (!_anyError && _isConected){
-                                    String jsonString = await _loadPasswordAsset();
-                                    final jsonResponse = json.decode(jsonString);
-                                    String token = await createJsonWebToken(jsonResponse);
-                                    /*final response = await http.post(
-                                    Uri.parse("www.google.com"),
-                                    headers: <String, String>{
-                                      'Content-Type': 'application/json; charset=UTF-8',
-                                    },
-                                    body: jsonEncode(<String, String>{
-                                      'token': token,
-                                    }),
-                                    );*/
-                                    verifyJsonWebToken(jsonResponse, token);
-                                    Navigator.pushNamed(context, '/url');
-                                  } else if(!_isConected && !_active){
-                                    _active = true;
-                                    _showToast();
-                                    Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
-                                  }
-                                },
-                                child: const Text('Enrolar'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+      resizeToAvoidBottomInset: false,
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            scale: 2.1,
+            opacity: 0.2,
+            image: AssetImage('assets/Cujae.png'),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget> [
+            SizedBox(height: _height * 0.225,),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+              child: Text('Url',
+                style: TextStyle(fontSize: 17, color: Colors.black),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TextField(
+                controller: _controllerUrl,
+                focusNode: _nodeUrl,
+                decoration: InputDecoration(
+                  errorText: _anyErrorUrl ? Services.showMessageError(_fieldEmptyUrl) : null,
+                  labelText: 'Inserte la Url',
+                  labelStyle: Services.setLabelStyle(_focusedUrl, _anyErrorUrl),
+                  fillColor: Colors.white,
+                  filled: true,
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      style: BorderStyle.solid,
+                      color: Colors.green[900],
+                      width: 1.0,
                     ),
-                );
-          }
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      style: BorderStyle.solid,
+                      color: Colors.green[600],
+                      width: 1.0,
+                    ),
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                cursorColor: Colors.grey,
+                onSubmitted: (text) async {
+                  bool data = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
+
+                  setState(() {
+                    errorHandlerUrl(data);
+                  });
+                },
+              ),
+            ),
+            SizedBox(height: _height * 0.02,),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+              child: Text('CI',
+                style: TextStyle(fontSize: 17, color: Colors.black),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TextField(
+                controller: _controllerCi,
+                maxLength: 11,
+                focusNode: _nodeCi,
+                decoration: InputDecoration(
+                  errorText: _anyErrorCi ? showMessageErrorCi() : null,
+                  labelText: 'Inserte su carnet de identidad',
+                  labelStyle: Services.setLabelStyle(_focusedCi, _anyErrorCi),
+                  fillColor: Colors.white,
+                  filled: true,
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      style: BorderStyle.solid,
+                      color: Colors.green[900],
+                      width: 1.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      style: BorderStyle.solid,
+                      color: Colors.green[600],
+                      width: 1.0,
+                    ),
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                cursorColor: Colors.grey,
+                onSubmitted: (text) {
+                  setState(() {
+                    errorHandlerCi();
+                  });
+                },
+              ),
+            ),
+            SizedBox(height: _height * 0.2,),
+            Row(
+              children: <Widget>[
+                SizedBox(width: _width * 0.38,),
+                ElevatedButton(
+                  style: raisedButtonStyle,
+                  onPressed: () async {
+                    bool internet = await InternetConnectionChecker().hasConnection;
+                    bool data = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
+
+                    setState(() {
+                      errorHandlerCi();
+                      errorHandlerUrl(data);
+                      _isConected = internet;
+                    });
+
+                    if (!_anyErrorCi && !_anyErrorUrl && _isConected){
+                      String token = await Services.createJsonWebToken(_controllerCi.text);
+                      /*final response = await http.post(
+                                   Uri.parse("www.google.com"),
+                                   headers: <String, String>{
+                                     'Content-Type': 'application/json; charset=UTF-8',
+                                   },
+                                   body: jsonEncode(<String, String>{
+                                     'token': token,
+                                   }),
+                                   );*/
+                      Services.verifyJsonWebToken(token);
+                      Navigator.pushNamed(context, '/url');
+                    } else if(!_isConected && !_active){
+                      _active = true;
+                      _showToast();
+                      Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
+                    }
+                  },
+                  child: const Text('Enrolar'),
+                ),
+              ],
+            )
+          ],
         ),
       ),
     );
   }
 
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    // Platform messages may fail,
-    // so we use a try/catch PlatformException.
-    String manufacturer = '',
-        productName = '';
-    try {
-      manufacturer = await DeviceInformation.deviceManufacturer;
-      productName = await DeviceInformation.productName;
-    } on PlatformException catch (e) {
-      e.message;
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _manufacturerName = manufacturer;
-      _productName = productName;
-    });
-  }
-
-  Future<String> _loadPasswordAsset() async {
-    return await rootBundle.loadString('passphrase/password');
-  }
-
-  Future<String> createJsonWebToken(Map jsonResponse) async {
-    String token;
-
-    /* Sign */ {
-      // Create a json web token
-      final jwt = JWT(
-        {
-          'info': _controller.text + " " + _manufacturerName + " " + _productName,
-        },
-      );
-
-      // Sign it
-      token = jwt.sign(SecretKey(jsonResponse['password']));
-      //print('Signed token: $token\n');
-    }
-
-    return token;
-  }
-
-  void verifyJsonWebToken(Map jsonResponse, String token){
-    /* Verify */ {
-
-      try {
-        // Verify a token
-        final jwt = JWT.verify(token, SecretKey(jsonResponse['password']));
-        print('Payload: ${jwt.payload['info']}');
-      } on JWTExpiredError {
-        Exception('jwt expired');
-      } on JWTError catch (ex) {
-        Exception(ex.message); // ex: invalid signature
-      }
-    }
-  }
-
-  TextStyle setLabelStyle(){
-    TextStyle result;
-
-    if(_focused){
-      result = TextStyle(fontSize: 16, color: Colors.green[600]);
-    } else{
-      result = TextStyle(fontSize: 16, color: Colors.green[900]);
-    }
-
-    if (_anyError){
-      result = const TextStyle(fontSize: 16, color: Colors.red);
-    }
-
-    return result;
-  }
-
-  void errorHandler() {
-    String ci = _controller.text;
+  void errorHandlerCi() {
+    String ci = _controllerCi.text;
 
     if(ci.isEmpty) {
       _notContainJustNumbers = false;
       _invalidLength = false;
       _invalidDateCi = false;
-      _fieldEmpty = true;
+      _fieldEmptyCi = true;
     } else if(inValidCi(ci)){
-      _fieldEmpty = false;
+      _fieldEmptyCi = false;
       _invalidLength = false;
       _invalidDateCi = false;
       _notContainJustNumbers = true;
     }
     else if(ci.length < 11){
-      _fieldEmpty = false;
+      _fieldEmptyCi = false;
       _notContainJustNumbers = false;
       _invalidDateCi = false;
       _invalidLength = true;
     } else if(!verifyDateCi(ci)){
-      _fieldEmpty = false;
+      _fieldEmptyCi = false;
       _notContainJustNumbers = false;
       _invalidLength = false;
       _invalidDateCi = true;
     }else {
-      _fieldEmpty = false;
+      _fieldEmptyCi = false;
       _notContainJustNumbers = false;
       _invalidLength = false;
       _invalidDateCi = false;
     }
 
-    _anyError = _fieldEmpty || _notContainJustNumbers || _invalidLength || _invalidDateCi;
+    _anyErrorCi = _fieldEmptyCi || _notContainJustNumbers || _invalidLength || _invalidDateCi;
   }
 
-  String showMessageError(){
+  void errorHandlerUrl(bool data){
+    if(_controllerUrl.text.isEmpty) {
+      _invalidUrl = false;
+      _fieldEmptyUrl = true;
+    } else if(data){
+      _fieldEmptyUrl = false;
+      _invalidUrl = true;
+    }else{
+      _invalidUrl = false;
+      _fieldEmptyUrl = false;
+    }
+
+    _anyErrorUrl = _fieldEmptyUrl || _invalidUrl;
+  }
+
+  String showMessageErrorCi(){
     String stringError;
 
-    if(_fieldEmpty) {
+    if(_fieldEmptyCi) {
       stringError = "Este campo no puede estar vacío";
     } else if(_invalidLength) {
       stringError = "El carnet de identidad solo puede tener 11 dígitos";
@@ -386,7 +364,7 @@ class _SignInState extends State<SignIn>{
         positionedToastBuilder: (context, child) {
           return Positioned(
             child: child,
-            bottom: _height * 0.2,
+            bottom: _height * 0.25,
             left: _width * 0.2,
             right: _width * 0.2,
           );

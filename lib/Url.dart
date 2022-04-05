@@ -1,9 +1,10 @@
 // @dart=2.9
 import 'package:flutter/material.dart';
-import 'package:dart_ping/dart_ping.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'Services.dart';
 
 class Url extends StatefulWidget {
   const Url({Key key}) : super(key: key);
@@ -67,6 +68,7 @@ class _UrlState extends State<Url>{
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: const Icon(
           Icons.settings,
@@ -79,238 +81,215 @@ class _UrlState extends State<Url>{
         centerTitle: true,
         backgroundColor: Colors.green[800],
       ),
-      body: DefaultTextStyle(
-        style: Theme.of(context).textTheme.bodyText2,
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints viewportConstraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: viewportConstraints.maxHeight,
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            scale: 2.1,
+            opacity: 0.2,
+            image: AssetImage('assets/Cujae.png'),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+              child: Text('Url',
+                style: TextStyle(fontSize: 17, color: Colors.black),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TextField(
+                controller: _controller,
+                focusNode: _node,
+                decoration: InputDecoration(
+                  errorText: _anyError ? Services.showMessageError(_fieldEmpty) : null,
+                  labelText: 'Inserte la Url',
+                  labelStyle: Services.setLabelStyle(_focused, _anyError),
+                  fillColor: Colors.white,
+                  filled: true,
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      style: BorderStyle.solid,
+                      color: Colors.green[900],
+                      width: 1.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      style: BorderStyle.solid,
+                      color: Colors.green[600],
+                      width: 1.0,
+                    ),
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
-                child: Stack(
-                  alignment: AlignmentDirectional.topStart,
-                  children: <Widget>[
-                     Center(
-                       child: Column(
-                         children: <Widget>[
-                           SizedBox(height: _height * 0.235,),
-                           Image.asset(
-                             "assets/Cujae.png",
-                             width: _width * 0.83,
-                             color: Colors.white.withOpacity(0.2),
-                             colorBlendMode: BlendMode.modulate,
-                           ),
-                         ],
-                       ),
-                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                cursorColor: Colors.grey,
+                onSubmitted: (text) async {
+                  bool data = _controller.text.startsWith("w") ? await Services.urlValidator(_controller.text) : await Services.launchURL(_controller.text);
+                  _setController();
+                  setState(() {
+                    errorHandler(data);
+                  });
+                  },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget> [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    child: Text(
+                      "Modo de acceso",
+                      style: TextStyle(
+                          fontSize: 17,
+                          color: Colors.black
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1),
+                        ),
+                      ],
+                      borderRadius: BorderRadius.circular(3),
+                      shape: BoxShape.rectangle,
+                      border: Border.all(
+                        color: Colors.green[900],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                          child: Text('Url',
-                            style: TextStyle(fontSize: 17, color: Colors.black),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _node,
-                            decoration: InputDecoration(
-                              errorText: _anyError ? showMessageError() : null,
-                              labelText: 'Inserte la Url',
-                              labelStyle: setLabelStyle(),
-                              fillColor: Colors.green[50],
-                              filled: true,
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  style: BorderStyle.solid,
-                                  color: Colors.green[900],
-                                  width: 1.0,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  style: BorderStyle.solid,
-                                  color: Colors.green[600],
-                                  width: 1.0,
-                                ),
-                              ),
-                              border: const OutlineInputBorder(),
-                            ),
-                            cursorColor: Colors.grey,
-                            onSubmitted: (text) async {
-                              bool data = _controller.text.startsWith("w") ? await _urlValidator() : await _launchURL();
-                              _setController();
-                              setState(() {
-                                errorHandler(data);
-                              });
+                        ListTile(
+                          hoverColor: Colors.green[500],
+                          title: const Text('Portero'),
+                          onTap: (){
+                            setState(() {
+                              _characterAccess = SingingCharacterAccess.Portero;
+                            });
                             },
+                          leading: Radio<SingingCharacterAccess>(
+                            activeColor: Colors.green[900],
+                            value: SingingCharacterAccess.Portero,
+                            groupValue: _characterAccess,
+                            onChanged: (SingingCharacterAccess value) {
+                              setState(() {
+                                _characterAccess = value;
+                              });
+                              },
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget> [
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                child: Text(
-                                  "Modo de acceso",
-                                  style: TextStyle(
-                                      fontSize: 17,
-                                      color: Colors.black
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.green.withOpacity(0.1),
-                                    ),
-                                  ],
-                                  borderRadius: BorderRadius.circular(3),
-                                  shape: BoxShape.rectangle,
-                                  border: Border.all(
-                                    color: Colors.green[900],
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    ListTile(
-                                      hoverColor: Colors.green[500],
-                                      title: const Text('Portero'),
-                                      onTap: (){
-                                        setState(() {
-                                          _characterAccess = SingingCharacterAccess.Portero;
-                                        });
-                                      },
-                                      leading: Radio<SingingCharacterAccess>(
-                                        activeColor: Colors.green[900],
-                                        value: SingingCharacterAccess.Portero,
-                                        groupValue: _characterAccess,
-                                        onChanged: (SingingCharacterAccess value) {
-                                          setState(() {
-                                            _characterAccess = value;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                    ListTile(
-                                      title: const Text('Reloj'),
-                                      onTap: (){
-                                        setState(() {
-                                          _characterAccess = SingingCharacterAccess.Reloj;
-                                        });
-                                      },
-                                      leading: Radio<SingingCharacterAccess>(
-                                        activeColor: Colors.green[900],
-                                        value: SingingCharacterAccess.Reloj,
-                                        groupValue: _characterAccess,
-                                        onChanged: (SingingCharacterAccess value) {
-                                          setState(() {
-                                            _characterAccess = value;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget> [
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                child: Text(
-                                  "Envío de datos",
-                                  style: TextStyle(
-                                      fontSize: 17,
-                                      color: Colors.black
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.green.withOpacity(0.1),
-                                    ),
-                                  ],
-                                  borderRadius: BorderRadius.circular(3),
-                                  shape: BoxShape.rectangle,
-                                  border: Border.all(
-                                    color: Colors.green[900],
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    ListTile(
-                                      title: const Text('Automático'),
-                                      onTap: (){
-                                        setState(() {
-                                          _characterSendData = SingingCharacterSendData.Automatico;
-                                        });
-                                      },
-                                      leading: Radio<SingingCharacterSendData>(
-                                        activeColor: Colors.green[900],
-                                        value: SingingCharacterSendData.Automatico,
-                                        groupValue: _characterSendData,
-                                        onChanged: (SingingCharacterSendData value) {
-                                          setState(() {
-                                            _characterSendData = value;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                    ListTile(
-                                      title: const Text('Manual'),
-                                      onTap: (){
-                                        setState(() {
-                                          _characterSendData = SingingCharacterSendData.Manual;
-                                        });
-                                      },
-                                      leading: Radio<SingingCharacterSendData>(
-                                        activeColor: Colors.green[900],
-                                        value: SingingCharacterSendData.Manual,
-                                        groupValue: _characterSendData,
-                                        onChanged: (SingingCharacterSendData value) {
-                                          setState(() {
-                                            _characterSendData = value;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                        ListTile(
+                          title: const Text('Reloj'),
+                          onTap: (){
+                            setState(() {
+                              _characterAccess = SingingCharacterAccess.Reloj;
+                            });
+                            },
+                          leading: Radio<SingingCharacterAccess>(
+                            activeColor: Colors.green[900],
+                            value: SingingCharacterAccess.Reloj,
+                            groupValue: _characterAccess,
+                            onChanged: (SingingCharacterAccess value) {
+                              setState(() {
+                                _characterAccess = value;
+                              });
+                              },
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget> [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    child: Text(
+                      "Envío de datos",
+                      style: TextStyle(
+                          fontSize: 17,
+                          color: Colors.black
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1),
+                        ),
+                      ],
+                      borderRadius: BorderRadius.circular(3),
+                      shape: BoxShape.rectangle,
+                      border: Border.all(
+                        color: Colors.green[900],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        ListTile(
+                          title: const Text('Automático'),
+                          onTap: (){
+                            setState(() {
+                              _characterSendData = SingingCharacterSendData.Automatico;
+                            });
+                            },
+                          leading: Radio<SingingCharacterSendData>(
+                            activeColor: Colors.green[900],
+                            value: SingingCharacterSendData.Automatico,
+                            groupValue: _characterSendData,
+                            onChanged: (SingingCharacterSendData value) {
+                              setState(() {
+                                _characterSendData = value;
+                              });
+                              },
+                          ),
+                        ),
+                        ListTile(
+                          title: const Text('Manual'),
+                          onTap: (){
+                            setState(() {
+                              _characterSendData = SingingCharacterSendData.Manual;
+                            });
+                            },
+                          leading: Radio<SingingCharacterSendData>(
+                            activeColor: Colors.green[900],
+                            value: SingingCharacterSendData.Manual,
+                            groupValue: _characterSendData,
+                            onChanged: (SingingCharacterSendData value) {
+                              setState(() {
+                                _characterSendData = value;
+                              });
+                              },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
       backgroundColor: Colors.white,
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green[800],
         onPressed: () async {
-          bool data = _controller.text.startsWith("w") ? await _urlValidator() : await _launchURL();
+          bool data = _controller.text.startsWith("w") ? await Services.urlValidator(_controller.text) : await Services.launchURL(_controller.text);
           bool internet = await InternetConnectionChecker().hasConnection;
 
           setState(() {
@@ -353,33 +332,6 @@ class _UrlState extends State<Url>{
     _anyError = _fieldEmpty || _invalidUrl;
   }
 
-  String showMessageError(){
-    String stringError;
-
-    if(_fieldEmpty) {
-      stringError = "Este campo no puede estar vacío";
-    } else {
-      stringError = "La URL no es válida";
-    }
-
-    return stringError;
-  }
-
-  Future<bool> _urlValidator() async {
-    final ping = Ping(_controller.text, count: 1);
-    PingData data = await ping.stream.first;
-
-    return data.error?.error != null ? true : false;
-  }
-
-  Future<bool> _launchURL() async {
-    var pattern = r'^((?:.|\n)*?)((http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)([-A-Z0-9.]+)(/[-A-Z0-9+&@#/%=~_|!:,.;]*)?(\?[A-Z0-9+&@#/%=~_|!:‌​,.;]*)?)';
-    RegExp regExp = RegExp(pattern);
-    bool result = regExp.hasMatch(_controller.text);
-
-    return !result;
-  }
-
   void _loadText() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -393,22 +345,6 @@ class _UrlState extends State<Url>{
     setState(() {
       prefs.setString('urlSaved', _controller.text);
     });
-  }
-
-  TextStyle setLabelStyle(){
-    TextStyle result;
-
-    if(_focused){
-      result = TextStyle(fontSize: 16, color: Colors.green[600]);
-    } else{
-      result = TextStyle(fontSize: 16, color: Colors.green[900]);
-    }
-
-    if (_anyError){
-      result = const TextStyle(fontSize: 16, color: Colors.red);
-    }
-
-    return result;
   }
 
   _showToast() {
