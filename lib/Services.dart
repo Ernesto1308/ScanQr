@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:dart_ping/dart_ping.dart';
 import 'package:device_information/device_information.dart';
@@ -21,7 +19,7 @@ class Services{
     return manufacturer + " " + productName;
   }
 
-  static Future<String> createJsonWebToken(String text) async {
+  static Future<String> createJsonWebToken(String text, String password) async {
     String token;
     String device = await featureDevice();
 
@@ -34,20 +32,20 @@ class Services{
       );
 
       // Sign it
-      token = jwt.sign(SecretKey('3rN35t0'));
-      print('Signed token: $token\n');
+      token = jwt.sign(SecretKey(password));
+      //print('Signed token: $token\n');
     }
 
     return token;
   }
 
-  static void verifyJsonWebToken(String token){
+  static void verifyJsonWebToken(String token, String password){
     /* Verify */ {
 
       try {
         // Verify a token
-        final jwt = JWT.verify(token, SecretKey('3rN35t0'));
-        print('Payload: ${jwt.payload['info']}');
+        final jwt = JWT.verify(token, SecretKey(password));
+        //print('Payload: ${jwt.payload['info']}');
       } on JWTExpiredError {
         Exception('jwt expired');
       } on JWTError catch (ex) {
@@ -69,18 +67,6 @@ class Services{
     bool result = regExp.hasMatch(text);
 
     return !result;
-  }
-
-  static String showMessageError(bool fieldEmpty){
-    String stringError;
-
-    if(fieldEmpty) {
-      stringError = "Este campo no puede estar vacío";
-    } else {
-      stringError = "La URL no es válida";
-    }
-
-    return stringError;
   }
 
   static TextStyle setLabelStyle(bool focused, bool anyError){

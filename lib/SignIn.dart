@@ -71,16 +71,6 @@ class _SignInState extends State<SignIn>{
     }
   }
 
-  final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
-    onPrimary: Colors.green[900],
-    primary: Colors.green[100],
-    minimumSize: const Size(88, 36),
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(10)),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     if (_firstBuild){
@@ -116,7 +106,7 @@ class _SignInState extends State<SignIn>{
                 controller: _controllerUrl,
                 focusNode: _nodeUrl,
                 decoration: InputDecoration(
-                  errorText: _anyErrorUrl ? Services.showMessageError(_fieldEmptyUrl) : null,
+                  errorText: _anyErrorUrl ? showMessageError() : null,
                   labelText: 'Inserte la Url',
                   labelStyle: Services.setLabelStyle(_focusedUrl, _anyErrorUrl),
                   fillColor: Colors.white,
@@ -207,7 +197,7 @@ class _SignInState extends State<SignIn>{
                     });
 
                     if (!_anyErrorCi && !_anyErrorUrl && _isConected){
-                      String token = await Services.createJsonWebToken(_controllerCi.text);
+                      String token = await Services.createJsonWebToken(_controllerCi.text, '3rN35t0');
                       /*final response = await http.post(
                                    Uri.parse("www.google.com"),
                                    headers: <String, String>{
@@ -217,8 +207,14 @@ class _SignInState extends State<SignIn>{
                                      'token': token,
                                    }),
                                    );*/
-                      Services.verifyJsonWebToken(token);
-                      Navigator.pushNamed(context, '/url');
+                      Services.verifyJsonWebToken(token, '3rN35t0');
+                      Navigator.pushNamed(
+                          context,
+                          '/url',
+                          arguments: {
+                            'before': "role"
+                          }
+                      );
                     } else if(!_isConected && !_active){
                       _active = true;
                       _showToast();
@@ -234,6 +230,16 @@ class _SignInState extends State<SignIn>{
       ),
     );
   }
+
+  final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
+    onPrimary: Colors.green[900],
+    primary: Colors.green[100],
+    minimumSize: const Size(88, 36),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(10)),
+    ),
+  );
 
   void errorHandlerCi() {
     String ci = _controllerCi.text;
@@ -282,6 +288,18 @@ class _SignInState extends State<SignIn>{
     }
 
     _anyErrorUrl = _fieldEmptyUrl || _invalidUrl;
+  }
+
+  String showMessageError(){
+    String stringError;
+
+    if(_fieldEmptyUrl) {
+      stringError = "Este campo no puede estar vacío";
+    } else {
+      stringError = "La URL no es válida";
+    }
+
+    return stringError;
   }
 
   String showMessageErrorCi(){
