@@ -39,8 +39,6 @@ class _SignInState extends State<SignIn>{
     _nodeUrl.addListener(_handleFocusChangeUrl);
     _nodeCi = FocusNode();
     _nodeCi.addListener(_handleFocusChangeCi);
-    _fToast = FToast();
-    _fToast.init(context);
     super.initState();
   }
 
@@ -217,6 +215,8 @@ class _SignInState extends State<SignIn>{
                       );
                     } else if(!_isConected && !_active){
                       _active = true;
+                      _fToast = FToast();
+                      _fToast.init(context);
                       _showToast();
                       Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
                     }
@@ -382,7 +382,7 @@ class _SignInState extends State<SignIn>{
         positionedToastBuilder: (context, child) {
           return Positioned(
             child: child,
-            bottom: _height * 0.25,
+            bottom: _height * 0.205,
             left: _width * 0.2,
             right: _width * 0.2,
           );

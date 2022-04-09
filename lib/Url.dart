@@ -21,14 +21,17 @@ class _UrlState extends State<Url>{
   bool _firstBuild = true;
   double _height;
   double _width;
-  bool _isConected = true;
+  bool _connected = true;
   bool _activeToast = false;
   FToast _fToast;
-  String _defaultEncryptionPass = '3rN35t0';
+  final String _defaultEncryptionPass = '3rN35t0';
   String _newPass;
+  String _url;
+  Map _arguments = {};
 
   @override
   void initState() {
+    _loadUrl();
     super.initState();
   }
 
@@ -39,9 +42,7 @@ class _UrlState extends State<Url>{
 
   @override
   Widget build(BuildContext context) {
-    _fToast = FToast();
-    _fToast.init(context);
-    Map data = ModalRoute.of(context).settings.arguments as Map;
+    _arguments = ModalRoute.of(context).settings.arguments as Map;
 
     if (_firstBuild){
       _height = MediaQuery.of(context).size.height;
@@ -49,10 +50,18 @@ class _UrlState extends State<Url>{
       _firstBuild = false;
     }
 
-    if (data['before'] == "configuration" && data['newEncryptionPass'] != null) {
+    if (_arguments['before'] == "configuration") {
       setState(() {
-        _newPass = data['newEncryptionPass'];
+        _url = _arguments['url'];
       });
+
+      _setController();
+
+      if(_arguments['newEncryptionPass'] != null) {
+        setState(() {
+          _newPass = _arguments['newEncryptionPass'];
+        });
+      }
     }
 
     return Scaffold(
@@ -247,19 +256,25 @@ class _UrlState extends State<Url>{
             bool internet = await InternetConnectionChecker().hasConnection;
 
             setState(() {
-                _isConected = internet;
+                _connected = internet;
             });
 
-            if(_isConected) {
+            if(_connected && _url != null) {
               Navigator.pushNamed(context, '/scanner', arguments: {
-                'address': "algo",
+                'address': _url,
                 'mode': _characterAccess.name,
-                'sendDataMode': _characterSendData.name
+                'sendDataMode': _characterSendData.name,
               });
-            } else if(!_isConected && !_activeToast){
+            } else if(!_connected && !_activeToast){
               _activeToast = true;
+              _fToast = FToast();
+              _fToast.init(context);
               _showToast();
               Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
+            } else if (_url == null){
+              _fToast = FToast();
+              _fToast.init(context);
+              _showToastNoServer(Colors.grey[300], "Es necesario definir el servidor\nen la configiración avanzada");
             }
           },
           child: const Icon(
@@ -270,17 +285,18 @@ class _UrlState extends State<Url>{
     );
   }
 
-  Future<String> _loadUrl() async {
+  void _loadUrl() async {
     final prefs = await SharedPreferences.getInstance();
-
-    return (prefs.getString('urlSaved') ?? "");
+    setState(() {
+      _url = (prefs.getString('urlSaved'));
+    });
   }
 
-  Future<void> _setController(String url) async {
+  Future<void> _setController() async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      prefs.setString('urlSaved', url);
+      prefs.setString('urlSaved', _url);
     });
   }
 
@@ -313,9 +329,44 @@ class _UrlState extends State<Url>{
         positionedToastBuilder: (context, child) {
           return Positioned(
             child: child,
-            bottom: _height * 0.13,
-            left: _width * 0.2,
-            right: _width * 0.2,
+            bottom: _height * 0.12,
+            left: _width * 0.1,
+            right: _width * 0.1,
+          );
+        }
+    );
+  }
+
+  _showToastNoServer(Color color, String info) {
+    Widget toast = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5.0),
+        color: color,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children:
+        [
+          Text(
+            info,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+
+    // Custom Toast Position
+    _fToast.showToast(
+        child: toast,
+        toastDuration: const Duration(milliseconds: 2500),
+        positionedToastBuilder: (context, child) {
+          return Positioned(
+            child: child,
+            bottom: _height * 0.12,
+            left: _width * 0.1,
+            right: _width * 0.1,
           );
         }
     );

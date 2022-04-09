@@ -31,23 +31,22 @@ class _QRViewExampleState extends State<QRViewExample> {
   double _width;
   double _height;
   bool _firstBuild = true;
-  bool _isConected = true;
+  bool _connected = true;
   bool _active = false;
+  Map _arguments = {};
 
   @override
   void reassemble() {
     super.reassemble();
     if (Platform.isAndroid) {
-      controller.pauseCamera();
+      controller?.pauseCamera();
     }
-    controller.resumeCamera();
+    controller?.resumeCamera();
   }
 
   @override
   void initState() {
     super.initState();
-    _fToast = FToast();
-    _fToast.init(context);
     _fToastNoInternet = FToast();
     _fToastNoInternet.init(context);
   }
@@ -58,12 +57,10 @@ class _QRViewExampleState extends State<QRViewExample> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     controller?.resumeCamera();
-    Map data = {};
-    data = ModalRoute.of(context)?.settings?.arguments as Map;
+    _arguments = ModalRoute.of(context)?.settings?.arguments as Map;
 
     if (_firstBuild){
       _width = MediaQuery.of(context).size.width;
@@ -76,7 +73,7 @@ class _QRViewExampleState extends State<QRViewExample> {
       body: Column(
         children: <Widget>[
           Expanded(flex: 3, child: _buildQrView(context)),
-          Expanded(flex: 1, child: _buildQrPanel(data)),
+          Expanded(flex: 1, child: _buildQrPanel()),
         ],
       ),
     );
@@ -162,7 +159,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     }
   }
 
-  Widget _buildQrPanel(Map data) {
+  Widget _buildQrPanel() {
     return Column(
         mainAxisAlignment: MainAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
@@ -175,7 +172,7 @@ class _QRViewExampleState extends State<QRViewExample> {
               ),
             )
           )
-              : data['sendDataMode'] != "Manual" ? _buildAutomaticPanel(data) : _buildRowDataScanned(data),
+              : _arguments['sendDataMode'] != "Manual" ? _buildAutomaticPanel() : _buildRowDataScanned(),
           const Divider(
               color: Colors.white,
           ),
@@ -225,7 +222,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     );
   }
 
-  Widget _buildRowDataScanned(Map data){
+  Widget _buildRowDataScanned(){
     Vibration.vibrate(duration: 150);
 
     return Row(
@@ -254,13 +251,15 @@ class _QRViewExampleState extends State<QRViewExample> {
               bool internet = await InternetConnectionChecker().hasConnection;
 
               setState(() {
-                _isConected = internet;
+                _connected = internet;
               });
 
-              if (_isConected){
-                await callPost(data);
-              } else if(!_isConected && !_active){
+              if (_connected){
+                await callPost();
+              } else if(!_connected && !_active){
                 _active = true;
+                _fToast = FToast();
+                _fToast.init(context);
                 _showToastNoInternet();
                 Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
               }
@@ -298,16 +297,16 @@ class _QRViewExampleState extends State<QRViewExample> {
         }),
       );
 
-      int value = jsonDecode(response.body)['data'];
+      int value = jsonDecode(response.body)['_arguments'];
       return value != 0 && value != null;
     } catch (e){
       throw Exception('Failed to send data');
     }
   }
 
-  Widget _buildAutomaticPanel(Map data){
+  Widget _buildAutomaticPanel(){
     Vibration.vibrate(duration: 200);
-    callPost(data);
+    callPost();
     
     return const Expanded(
         child: Center(
@@ -318,11 +317,13 @@ class _QRViewExampleState extends State<QRViewExample> {
     );
   }
 
-  Future<void> callPost(Map data) async {
+  Future<void> callPost() async {
     bool internet = await InternetConnectionChecker().hasConnection;
+    _fToast = FToast();
+    _fToast.init(context);
 
     if (internet){
-      _accepted = await _createPost(data['address'],data['mode']);
+      _accepted = await _createPost(_arguments['address'],_arguments['mode']);
       _showToast();
       _message = null;
     } else if(!internet && !_active){

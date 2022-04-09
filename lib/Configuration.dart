@@ -432,6 +432,7 @@ class _ConfigurationState extends State<Configuration>{
     });
   }
 
+
   _showToastPass(Color color, String info) {
     Widget toast = Container(
       padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
