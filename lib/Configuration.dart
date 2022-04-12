@@ -1,8 +1,9 @@
 // @dart=2.9
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'ManageDialogState.dart';
 import 'Services.dart';
 
 class Configuration extends StatefulWidget{
@@ -13,43 +14,36 @@ class Configuration extends StatefulWidget{
 }
 
 class _ConfigurationState extends State<Configuration>{
-  final String _developerPassword = "1234";
-  String _newEncryptionPassword;
-  bool _correctPassword = false;
-  bool _isDeveloperSwitched = false;
   bool _isChangePassSwitched = false;
-  final _controllerInsert = TextEditingController();
-  final _controllerChange = TextEditingController();
+  bool _wasBuildTextField = false;
   bool _firstBuild = true;
   double _height;
   double _width;
-  FToast _fToast;
-  final GlobalKey<FormState> _formKeyInsert = GlobalKey<FormState>();
-  final GlobalKey<FormState> _formKeyChange = GlobalKey<FormState>();
   final _controllerUrl = TextEditingController();
   bool _fieldEmpty = false;
   bool _invalidUrl = false;
   bool _containEndpoint = false;
   bool _focused = false;
   bool _anyError = false;
+  bool _connected = false;
+  bool _activeToast = false;
   FocusNode _node;
+  String _newPass;
 
   @override
   void initState() {
+    super.initState();
     _loadText();
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
-    super.initState();
   }
 
   @override
   void dispose() {
+    super.dispose();
     _node.removeListener(_handleFocusChange);
     _node.dispose();
-    _controllerInsert.dispose();
-    _controllerChange.dispose();
     _controllerUrl.dispose();
-    super.dispose();
   }
 
   void _handleFocusChange() {
@@ -62,9 +56,6 @@ class _ConfigurationState extends State<Configuration>{
 
   @override
   Widget build(BuildContext context) {
-    _fToast = FToast();
-    _fToast.init(context);
-
     if (_firstBuild){
       _height = MediaQuery.of(context).size.height;
       _width = MediaQuery.of(context).size.width;
@@ -76,21 +67,18 @@ class _ConfigurationState extends State<Configuration>{
         leading: IconButton(
           splashRadius: 23,
           onPressed: () async {
-            bool validUrl = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
-
-            setState(() {
-              errorHandler(validUrl);
-            });
+            if (_wasBuildTextField){
+              await _manageProblemInternet();
+            }
 
             if(!_anyError) {
-              _isDeveloperSwitched = false;
-              _correctPassword = false;
+              await _loadPass();
               Navigator.popAndPushNamed(
                   context,
                   '/url',
                   arguments: <String,String>{
                     'before': "configuration",
-                    'newEncryptionPass': _newEncryptionPassword,
+                    'newEncryptionPass': _newPass,
                     'url': _controllerUrl.text
                   }
               );
@@ -110,28 +98,10 @@ class _ConfigurationState extends State<Configuration>{
       ),
       body: Column(
         children: <Widget>[
-          _createSwitchDeveloper(),
-          if (_isDeveloperSwitched && _correctPassword) _createSwitchToChangePass(),
-          if (_isDeveloperSwitched && _correctPassword) _createUrlTextField()
+          _createSwitchToChangePass(),
+          _createUrlTextField()
         ],
       ),
-    );
-  }
-
-  SwitchListTile _createSwitchDeveloper(){
-    return SwitchListTile(
-      title: const Text(
-        "Opciones del desarrollador",
-      ),
-      onChanged: (bool value) {
-        setState(() {
-          _isDeveloperSwitched = value;
-        });
-        if (_isDeveloperSwitched) _showDialogInsertPass();
-      },
-      value: _isDeveloperSwitched,
-      activeColor: Colors.green[800],
-      activeTrackColor: Colors.green.withOpacity(0.5),
     );
   }
 
@@ -140,101 +110,18 @@ class _ConfigurationState extends State<Configuration>{
       title: const Text(
         "Cambiar contraseña de encriptación",
       ),
-      onChanged: (bool value) {
+      onChanged: (bool value) async {
         setState(() {
           _isChangePassSwitched = value;
         });
-        if (_isChangePassSwitched) _showDialogChangePass();
+        if (_isChangePassSwitched) await _showDialogChangePass();
+        setState(() {
+          _isChangePassSwitched = false;
+        });
       },
       value: _isChangePassSwitched,
       activeColor: Colors.green[800],
       activeTrackColor: Colors.green.withOpacity(0.5),
-    );
-  }
-
-  Future<void> _showDialogInsertPass() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Contraseña'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                const Text('Inserte la contraseña'),
-                Form(
-                  key: _formKeyInsert,
-                  child: TextFormField(
-                    cursorColor: Colors.green[600],
-                    controller: _controllerInsert,
-                    decoration: InputDecoration(
-                      border: const UnderlineInputBorder(),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          style: BorderStyle.solid,
-                          color: Colors.green[900],
-                          width: 1.0,
-                        ),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          style: BorderStyle.solid,
-                          color: Colors.green[600],
-                          width: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    color: Colors.green[900]
-                  ),
-              ),
-              onPressed: () {
-                setState(() {
-                  _isDeveloperSwitched = false;
-                  _correctPassword = false;
-                });
-                _controllerInsert.clear();
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                  'Aceptar',
-                  style: TextStyle(
-                      color: Colors.green[900]
-                  ),
-              ),
-              onPressed: () {
-                setState(() {
-                  if (_developerPassword == _controllerInsert.text) {
-                    _correctPassword = true;
-                  } else {
-                    _isDeveloperSwitched = false;
-                    _correctPassword = false;
-                  }
-                });
-
-                _controllerInsert.clear();
-                Navigator.of(context).pop();
-
-                if (!_correctPassword){
-                  _showToastPass(Colors.grey[300], "Contraseña incorrecta");
-                }
-              },
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -243,90 +130,20 @@ class _ConfigurationState extends State<Configuration>{
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Cambio de contraseña'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                const Text('Inserte la nueva contraseña de encriptación'),
-                Form(
-                  key: _formKeyChange,
-                  child: TextFormField(
-                    cursorColor: Colors.green[600],
-                    controller: _controllerChange,
-                    decoration: InputDecoration(
-                      border: const UnderlineInputBorder(),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          style: BorderStyle.solid,
-                          color: Colors.green[900],
-                          width: 1.0,
-                        ),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          style: BorderStyle.solid,
-                          color: Colors.green[600],
-                          width: 1.0,
-                        ),
-                      ),
-                    ),
-                    validator: (value){
-                      String result;
-                      if (value.isEmpty) result = "Este campo no puede estar vacío";
-
-                      return result;
-                    },
-                    onFieldSubmitted: (text){
-                      _formKeyChange.currentState.validate();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                'Cancelar',
-                style: TextStyle(
-                    color: Colors.green[900]
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  _isChangePassSwitched = false;
-                });
-                _controllerChange.clear();
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                'Cambiar',
-                style: TextStyle(
-                    color: Colors.green[900]
-                ),
-              ),
-              onPressed: () {
-                if (_formKeyChange.currentState.validate()){
-                  setState(() {
-                    _isChangePassSwitched = false;
-                    _newEncryptionPassword = _controllerChange.text;
-                  });
-                  _controllerChange.clear();
-                  Navigator.of(context).pop();
-                  _showToastPass(Colors.grey[300], "Contraseña cambiada exitosamente");
-                }
-              },
-            ),
-          ],
+        return MyDialogContent(
+          height: _height,
+          width: _width,
+          secondButton: 'Cambiar',
+          title: 'Nueva contraseña',
+          subtitle: 'Inserte la nueva contraseña',
         );
       },
     );
   }
 
   Column _createUrlTextField(){
+    _wasBuildTextField = true;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -365,13 +182,8 @@ class _ConfigurationState extends State<Configuration>{
             ),
             cursorColor: Colors.grey,
             onSubmitted: (text) async {
-              bool validUrl = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
-              _setController();
-
-              setState(() {
-                errorHandler(validUrl);
-              });
-            },
+              await _manageProblemInternet();
+            }
           ),
         ),
       ],
@@ -432,39 +244,40 @@ class _ConfigurationState extends State<Configuration>{
     });
   }
 
+  Future<void> _manageProblemInternet() async {
+    _connected = await InternetConnectionChecker().hasConnection;
 
-  _showToastPass(Color color, String info) {
-    Widget toast = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5.0),
-        color: color,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children:
-        [
-          Text(
-            info,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+    if (_connected){
+      bool validUrl = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
+      _setController();
 
-    // Custom Toast Position
-    _fToast.showToast(
-        child: toast,
-        toastDuration: const Duration(milliseconds: 2500),
-        positionedToastBuilder: (context, child) {
-          return Positioned(
-            child: child,
-            bottom: _height * 0.1,
-            left: _width * 0.1,
-            right: _width * 0.1,
-          );
-        }
-    );
+      setState(() {
+        errorHandler(validUrl);
+      });
+    } else if (!_connected && !_activeToast){
+      _anyError = true;
+      _activeToast = true;
+      Services.showToastSemaphore(
+        Colors.yellow[700],
+        Icons.wifi_off_outlined,
+        "El dispositivo no tiene\n acceso a Internet",
+        context,
+        _height,
+        _width,
+        0.12,
+        0.1,
+        0.1
+      );
+    Services.notification();
+    Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
+    }
+  }
+
+  Future<void> _loadPass() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _newPass = (prefs.getString('newPass'));
+    });
   }
 }

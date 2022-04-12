@@ -1,8 +1,13 @@
 // @dart=2.9
+import 'dart:convert';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:device_information/device_information.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:scanqr/Services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignIn extends StatefulWidget{
   const SignIn({Key key}) : super(key: key);
@@ -29,9 +34,8 @@ class _SignInState extends State<SignIn>{
   bool _firstBuild = true;
   double _height;
   double _width;
-  bool _isConected = true;
+  bool _connected = true;
   bool _active = false;
-  FToast _fToast;
 
   @override
   void initState() {
@@ -191,33 +195,45 @@ class _SignInState extends State<SignIn>{
                     setState(() {
                       errorHandlerCi();
                       errorHandlerUrl(data);
-                      _isConected = internet;
+                      _connected = internet;
                     });
 
-                    if (!_anyErrorCi && !_anyErrorUrl && _isConected){
-                      String token = await Services.createJsonWebToken(_controllerCi.text, '3rN35t0');
-                      /*final response = await http.post(
-                                   Uri.parse("www.google.com"),
-                                   headers: <String, String>{
-                                     'Content-Type': 'application/json; charset=UTF-8',
-                                   },
-                                   body: jsonEncode(<String, String>{
-                                     'token': token,
-                                   }),
-                                   );*/
-                      Services.verifyJsonWebToken(token, '3rN35t0');
+                    if (!_anyErrorCi && !_anyErrorUrl && _connected){
+                      String device = await _featureDevice();
+                      String token = await _createJsonWebTokenEnroll(_controllerCi.text, device, '3rN35t0');/*
+                      final response = await http.post(
+                        Uri.parse("www.google.com"),
+                        headers: <String, String>{
+                          'Content-Type': 'application/json; charset=UTF-8',
+                        },
+                        body: jsonEncode(<String, String>{
+                          'token': token,
+                        }),
+                      );*/
+                      _verifyJsonWebTokenEnroll(token, '3rN35t0');
+                      _setControllerEnroll();
                       Navigator.pushNamed(
                           context,
                           '/url',
                           arguments: {
-                            'before': "role"
+                            'before': "role",
+                            'idDevice': "20202020"
                           }
                       );
-                    } else if(!_isConected && !_active){
+                    } else if(!_connected && !_active){
                       _active = true;
-                      _fToast = FToast();
-                      _fToast.init(context);
-                      _showToast();
+                      Services.showToastSemaphore(
+                          Colors.yellow[700],
+                          Icons.wifi_off_outlined,
+                          "El dispositivo no tiene\n acceso a Internet",
+                          context,
+                          _height,
+                          _width,
+                          0.205,
+                          0.2,
+                          0.2
+                      );
+                      Services.notification();
                       Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
                     }
                   },
@@ -353,39 +369,57 @@ class _SignInState extends State<SignIn>{
     return result;
   }
 
-  _showToast() {
-    Widget toast = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25.0),
-        color: Colors.yellow[700],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children:
-        [
-          const Icon(Icons.wifi_off_outlined),
-          SizedBox(width: _width * 0.02,),
-          const Text(
-            "El dispositivo no tiene\n acceso a Internet",
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+  void _setControllerEnroll() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('isEnroll', true);
+  }
 
-    // Custom Toast Position
-    _fToast.showToast(
-        child: toast,
-        toastDuration: const Duration(milliseconds: 2500),
-        positionedToastBuilder: (context, child) {
-          return Positioned(
-            child: child,
-            bottom: _height * 0.205,
-            left: _width * 0.2,
-            right: _width * 0.2,
-          );
-        });
+  Future<String> _featureDevice() async {
+    String manufacturer = '',
+        productName = '';
+
+    try {
+      manufacturer = await DeviceInformation.deviceManufacturer;
+      productName = await DeviceInformation.productName;
+    } on PlatformException catch (e) {
+      e.message;
+    }
+
+    return manufacturer + " " + productName;
+  }
+
+  Future<String> _createJsonWebTokenEnroll(String ci, String phoneFeatures, String password) async {
+    String token;
+
+    /* Sign */ {
+      // Create a json web token
+      final jwt = JWT(
+        {
+          'ci': ci,
+          'phoneFeatures': phoneFeatures,
+        },
+      );
+
+      // Sign it
+      token = jwt.sign(SecretKey(password));
+      //print('Signed token: $token\n');
+    }
+
+    return token;
+  }
+
+  void _verifyJsonWebTokenEnroll(String token, String password){
+    /* Verify */ {
+
+      try {
+        // Verify a token
+        final jwt = JWT.verify(token, SecretKey(password));
+        print('Payload: ${jwt.payload['ci']}\n ${jwt.payload['phoneFeatures']}');
+      } on JWTExpiredError {
+        Exception('jwt expired');
+      } on JWTError catch (ex) {
+        Exception(ex.message); // ex: invalid signature
+      }
+    }
   }
 }

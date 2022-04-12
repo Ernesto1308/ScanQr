@@ -1,9 +1,9 @@
 // @dart=2.9
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
-import 'package:scanqr/Configuration.dart';
+import 'package:scanqr/ManageDialogState.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'Services.dart';
 
 class Url extends StatefulWidget {
   const Url({Key key}) : super(key: key);
@@ -23,62 +23,83 @@ class _UrlState extends State<Url>{
   double _width;
   bool _connected = true;
   bool _activeToast = false;
-  FToast _fToast;
   final String _defaultEncryptionPass = '3rN35t0';
   String _newPass;
   String _url;
+  String _idDevice;
   Map _arguments = {};
+  FocusNode _node;
+  bool _focused = false;
 
   @override
   void initState() {
-    _loadUrl();
     super.initState();
+    _node = FocusNode();
+    _node.addListener(_handleFocusChange);
   }
 
   @override
   void dispose() {
     super.dispose();
+    _node.removeListener(_handleFocusChange);
+    _node.dispose();
+  }
+
+  void _handleFocusChange() {
+    if (_node.hasFocus != _focused) {
+      setState(() {
+        _focused = _node.hasFocus;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    _arguments = ModalRoute.of(context).settings.arguments as Map;
-
     if (_firstBuild){
       _height = MediaQuery.of(context).size.height;
       _width = MediaQuery.of(context).size.width;
-      _firstBuild = false;
-    }
+      _arguments = ModalRoute.of(context).settings.arguments as Map;
 
-    if (_arguments['before'] == "configuration") {
-      setState(() {
-        _url = _arguments['url'];
-      });
+      if (_arguments != null){
+        if (_arguments['before'] == "role") {
+          setState(() {
+            _idDevice = _arguments['idDevice'];
+          });
+          _setControllerIdDevice();
+        }else if (_arguments['before'] == "configuration") {
+          if (_arguments['url'] != null){
+            setState(() {
+              _url = _arguments['url'];
+            });
+            _setControllerUrl();
+          }
 
-      _setController();
-
-      if(_arguments['newEncryptionPass'] != null) {
-        setState(() {
-          _newPass = _arguments['newEncryptionPass'];
-        });
+          if (_arguments['newEncryptionPass'] != null){
+            setState(() {
+              _newPass = _arguments['newEncryptionPass'];
+            });
+            _setControllerPass();
+          }
+        }
       }
+
+      _loadPass();
+      _loadIdDevice();
+      _loadUrl();
+      _firstBuild = false;
     }
 
     return Scaffold(
         resizeToAvoidBottomInset: false,
         appBar: AppBar(
           leading: IconButton(
-              icon: const Icon(
-                Icons.settings,
-                color: Colors.black,
-          ),
-            onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (BuildContext context) => const Configuration()
-                    )
-                );
+            splashRadius: 23,
+            icon: const Icon(
+              Icons.settings,
+              color: Colors.black,
+            ),
+            onPressed: () async {
+                await _showDialogInsertPass();
             },
           ),
           title: const Text(
@@ -146,7 +167,7 @@ class _UrlState extends State<Url>{
                                 setState(() {
                                   _characterAccess = value;
                                 });
-                                },
+                              },
                             ),
                           ),
                           ListTile(
@@ -253,28 +274,50 @@ class _UrlState extends State<Url>{
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.green[800],
           onPressed: () async {
-            bool internet = await InternetConnectionChecker().hasConnection;
+            _connected = await InternetConnectionChecker().hasConnection;
 
-            setState(() {
-                _connected = internet;
-            });
-
-            if(_connected && _url != null) {
-              Navigator.pushNamed(context, '/scanner', arguments: {
-                'address': _url,
-                'mode': _characterAccess.name,
-                'sendDataMode': _characterSendData.name,
-              });
+            if(_connected && _url != "" && _url != null) {
+              await _loadIdDevice();
+              Navigator.pushNamed(
+                  context,
+                  '/scanner',
+                  arguments: {
+                    'address': _url,
+                    'mode': _characterAccess.name,
+                    'sendDataMode': _characterSendData.name,
+                    'encryptionPass': _newPass ?? _defaultEncryptionPass,
+                    'idDevice': _idDevice
+                  }
+              );
             } else if(!_connected && !_activeToast){
               _activeToast = true;
-              _fToast = FToast();
-              _fToast.init(context);
-              _showToast();
+              Services.showToastSemaphore(
+                  Colors.yellow[700],
+                  Icons.wifi_off_outlined,
+                  "El dispositivo no tiene\n acceso a Internet",
+                  context,
+                  _height,
+                  _width,
+                  0.12,
+                  0.1,
+                  0.1
+              );
+              Services.notification();
               Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
-            } else if (_url == null){
-              _fToast = FToast();
-              _fToast.init(context);
-              _showToastNoServer(Colors.grey[300], "Es necesario definir el servidor\nen la configiración avanzada");
+            } else if (!_activeToast && (_url == null || _url == "")){
+              _activeToast = true;
+              Services.showToastSystem(
+                  Colors.grey[350],
+                  "Es necesario definir el servidor\nen la configiración avanzada",
+                  context,
+                  _height,
+                  _width,
+                  0.12,
+                  0.1,
+                  0.1
+              );
+              Services.notification();
+              Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
             }
           },
           child: const Icon(
@@ -285,90 +328,67 @@ class _UrlState extends State<Url>{
     );
   }
 
-  void _loadUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _url = (prefs.getString('urlSaved'));
-    });
-  }
-
-  Future<void> _setController() async {
+  Future<void> _loadIdDevice() async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      prefs.setString('urlSaved', _url);
+      _idDevice = (prefs.getString('idDevice'));
     });
   }
 
-  _showToast() {
-    Widget toast = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25.0),
-        color: Colors.yellow[700],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children:
-        [
-          const Icon(Icons.wifi_off_outlined),
-          SizedBox(width: _width * 0.02,),
-          const Text(
-            "El dispositivo no tiene\n acceso a Internet",
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+  Future<void> _setControllerIdDevice() async {
+    final prefs = await SharedPreferences.getInstance();
 
-    // Custom Toast Position
-    _fToast.showToast(
-        child: toast,
-        toastDuration: const Duration(milliseconds: 2500),
-        positionedToastBuilder: (context, child) {
-          return Positioned(
-            child: child,
-            bottom: _height * 0.12,
-            left: _width * 0.1,
-            right: _width * 0.1,
-          );
-        }
+    setState(() {
+      prefs.setString('idDevice', _idDevice);
+    });
+  }
+
+  Future<void> _loadUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _url = (prefs.getString('url'));
+    });
+  }
+
+  Future<void> _setControllerUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('url', _url);
+    });
+  }
+
+  Future<void> _showDialogInsertPass() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return MyDialogContent(
+          height: _height,
+          width: _width,
+          secondButton: 'Aceptar',
+          title: 'Contraseña',
+          subtitle: 'Inserte la contraseña',
+        );
+      },
     );
   }
 
-  _showToastNoServer(Color color, String info) {
-    Widget toast = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5.0),
-        color: color,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children:
-        [
-          Text(
-            info,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+  Future<void> _loadPass() async {
+    final prefs = await SharedPreferences.getInstance();
 
-    // Custom Toast Position
-    _fToast.showToast(
-        child: toast,
-        toastDuration: const Duration(milliseconds: 2500),
-        positionedToastBuilder: (context, child) {
-          return Positioned(
-            child: child,
-            bottom: _height * 0.12,
-            left: _width * 0.1,
-            right: _width * 0.1,
-          );
-        }
-    );
+    setState(() {
+      _newPass = (prefs.getString('newPass'));
+    });
+  }
+
+  Future<void> _setControllerPass() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('newPass', _newPass);
+    });
   }
 }
