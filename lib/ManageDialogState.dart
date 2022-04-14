@@ -1,7 +1,6 @@
 // @dart=2.9
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'Configuration.dart';
 import 'Services.dart';
 
@@ -9,14 +8,12 @@ class MyDialogContent extends StatefulWidget {
   const MyDialogContent({
     Key key,
     @required this.title,
-    @required this.subtitle,
     @required this.secondButton,
     @required this.height,
     @required this.width
   }): super(key: key);
 
   final String title;
-  final String subtitle;
   final String secondButton;
   final double height;
   final double width;
@@ -27,9 +24,13 @@ class MyDialogContent extends StatefulWidget {
 
 class _MyDialogContentState extends State<MyDialogContent> {
   bool _isObscure = true;
+  bool _focused = false;
+  bool _isNotEmpty = true;
+  bool _insertPassDialog = true;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final String _developerPassword = "1234";
   final _controller = TextEditingController();
+
 
   @override
   void initState(){
@@ -38,6 +39,8 @@ class _MyDialogContentState extends State<MyDialogContent> {
 
   @override
   Widget build(BuildContext context) {
+    _insertPassDialog = widget.secondButton == 'Aceptar';
+
     return _getContent();
   }
 
@@ -47,59 +50,71 @@ class _MyDialogContentState extends State<MyDialogContent> {
       content: SingleChildScrollView(
         child: ListBody(
           children: <Widget>[
-            Text(widget.subtitle),
+            SizedBox(
+              height: widget.height * 0.01,
+            ),
             Form(
               key: _formKey,
               child: TextFormField(
-                obscureText: _isObscure,
-                cursorColor: Colors.green[600],
-                controller: _controller,
-                decoration: InputDecoration(
-                  border: const UnderlineInputBorder(),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      style: BorderStyle.solid,
-                      color: Colors.green[900],
-                      width: 1.0,
-                    ),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      style: BorderStyle.solid,
-                      color: Colors.green[600],
-                      width: 1.0,
-                    ),
-                  ),
-                  suffixIcon: IconButton(
-                      splashRadius: 23,
-                      icon: Icon(
-                        _isObscure ? Icons.visibility : Icons.visibility_off,
-                        color: Colors.green[600],
+                  obscureText: _isObscure,
+                  cursorColor: _isNotEmpty ? Colors.green[600] : Colors.red,
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: _insertPassDialog ? "Inserte la contraseña" : "Nueva contraseña",
+                    hintStyle: _insertPassDialog ? Services.setLabelStyleInsertPass(_focused) : Services.setLabelStyle(_focused, !_isNotEmpty),
+                    border: const UnderlineInputBorder(),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Colors.green[900],
+                        width: 1.0,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _isObscure = !_isObscure;
-                        });
-                      }
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Colors.green[600],
+                        width: 1.0,
+                      ),
+                    ),
+                    suffixIcon: IconButton(
+                        splashRadius: 23,
+                        icon: Icon(
+                          _isObscure ? Icons.visibility : Icons.visibility_off,
+                          color: _manageEyeColor(),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isObscure = !_isObscure;
+                          });
+                        }
+                    ),
                   ),
+                  validator: (text){
+                    return text.isEmpty ? "Este campo no puede estar vacío" : null;
+                  },
+                  onFieldSubmitted: (text){
+                    setState(() {
+                      _focused = false;
+                      if (!_insertPassDialog) _isNotEmpty = _formKey.currentState.validate();
+                    });
+                  },
+                  onTap: (){
+                    setState(() {
+                      _focused = true;
+                    });
+                  },
                 ),
-                validator: (text){
-                  return text.isEmpty ? "Este campo no puede estar vacío" : null;
-                },
-                onFieldSubmitted: (text){
-                  widget.secondButton == "Aceptar" ? null : _formKey.currentState.validate();
-                },
-              ),
             )
           ],
         ),
       ),
       actions: <Widget>[
         TextButton(
-          child: Text(
+          child: const Text(
             'Cancelar',
             style: TextStyle(
-                color: Colors.green[900]
+                color: Colors.black
             ),
           ),
           onPressed: () {
@@ -110,12 +125,12 @@ class _MyDialogContentState extends State<MyDialogContent> {
         TextButton(
           child: Text(
             widget.secondButton,
-            style: TextStyle(
-                color: Colors.green[900]
+            style: const TextStyle(
+                color: Colors.black
             ),
           ),
           onPressed: () async {
-            if (widget.secondButton == 'Aceptar'){
+            if (_insertPassDialog){
               if (_controller.text == _developerPassword){
                 Navigator.push(
                     context,
@@ -128,6 +143,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
                 Navigator.of(context).pop();
                 Services.showToastSystem(
                     Colors.grey[300],
+                    const Duration(milliseconds: 2500),
                     "Contraseña incorrecta",
                     context,
                     widget.height,
@@ -139,12 +155,16 @@ class _MyDialogContentState extends State<MyDialogContent> {
                 Services.notification();
               }
             } else {
-              if (_formKey.currentState.validate()){
+              setState(() {
+                _isNotEmpty = _formKey.currentState.validate();
+              });
+              if (_isNotEmpty){
                 await _setControllerPass();
                 _controller.clear();
                 Navigator.of(context).pop();
                 Services.showToastSystem(
                     Colors.grey[300],
+                    const Duration(milliseconds: 2500),
                     "Contraseña cambiada exitosamente",
                     context,
                     widget.height,
@@ -168,5 +188,21 @@ class _MyDialogContentState extends State<MyDialogContent> {
     setState(() {
       prefs.setString('newPass', _controller.text);
     });
+  }
+
+  Color _manageEyeColor(){
+    Color finalColor;
+
+    if(_insertPassDialog){
+      finalColor = _focused ? Colors.green[600] : Colors.green[900];
+    } else {
+      if(_isNotEmpty){
+        finalColor = _focused ? Colors.green[600] : Colors.green[900];
+      } else {
+        finalColor = Colors.red;
+      }
+    }
+
+    return finalColor;
   }
 }

@@ -290,13 +290,19 @@ class _QRViewExampleState extends State<QRViewExample> {
     _connected = await InternetConnectionChecker().hasConnection;
 
     if (_connected){
-      String token = await Services.createJsonWebToken(_message, _arguments['mode'], _arguments['idDevice'], _arguments['encryptionPass']);
-      Services.verifyJsonWebToken(token, _arguments['encryptionPass']);
+      Map map = {
+        'qr': _message,
+        'mode': _arguments['mode'],
+        'idDevice': _arguments['idDevice'],
+      };
+      String token = await Services.createJsonWebToken(map, _arguments['encryptionPass']);
       _accepted = await _createPost(_arguments['address'], token);
+      Services.verifyJsonWebToken(token, _arguments['encryptionPass']);
 
       if (_accepted){
         Services.showToastSemaphore(
             Colors.greenAccent,
+            const Duration(milliseconds: 2500),
             Icons.check,
             "Acceso Permitido",
             context,
@@ -309,6 +315,7 @@ class _QRViewExampleState extends State<QRViewExample> {
       } else {
         Services.showToastSemaphore(
             Colors.red,
+            const Duration(milliseconds: 2500),
             Icons.warning_amber_outlined,
             "Acceso Denegado",
             context,
@@ -328,6 +335,7 @@ class _QRViewExampleState extends State<QRViewExample> {
       _active = true;
       Services.showToastSemaphore(
           Colors.yellow[700],
+          const Duration(milliseconds: 2500),
           Icons.wifi_off_outlined,
           "El dispositivo no tiene\n acceso a Internet",
           context,

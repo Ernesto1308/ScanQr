@@ -28,29 +28,15 @@ class _UrlState extends State<Url>{
   String _url;
   String _idDevice;
   Map _arguments = {};
-  FocusNode _node;
-  bool _focused = false;
 
   @override
   void initState() {
     super.initState();
-    _node = FocusNode();
-    _node.addListener(_handleFocusChange);
   }
 
   @override
   void dispose() {
     super.dispose();
-    _node.removeListener(_handleFocusChange);
-    _node.dispose();
-  }
-
-  void _handleFocusChange() {
-    if (_node.hasFocus != _focused) {
-      setState(() {
-        _focused = _node.hasFocus;
-      });
-    }
   }
 
   @override
@@ -99,7 +85,7 @@ class _UrlState extends State<Url>{
               color: Colors.black,
             ),
             onPressed: () async {
-                await _showDialogInsertPass();
+              await _showDialogInsertPass();
             },
           ),
           title: const Text(
@@ -293,6 +279,7 @@ class _UrlState extends State<Url>{
               _activeToast = true;
               Services.showToastSemaphore(
                   Colors.yellow[700],
+                  const Duration(milliseconds: 2500),
                   Icons.wifi_off_outlined,
                   "El dispositivo no tiene\n acceso a Internet",
                   context,
@@ -308,6 +295,7 @@ class _UrlState extends State<Url>{
               _activeToast = true;
               Services.showToastSystem(
                   Colors.grey[350],
+                  const Duration(milliseconds: 2500),
                   "Es necesario definir el servidor\nen la configiración avanzada",
                   context,
                   _height,
@@ -325,6 +313,21 @@ class _UrlState extends State<Url>{
             color: Colors.black,
           ),
         ),
+    );
+  }
+
+  Future<void> _showDialogInsertPass() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return MyDialogContent(
+          height: _height,
+          width: _width,
+          secondButton: 'Aceptar',
+          title: 'Contraseña'
+        );
+      },
     );
   }
 
@@ -358,22 +361,6 @@ class _UrlState extends State<Url>{
     setState(() {
       prefs.setString('url', _url);
     });
-  }
-
-  Future<void> _showDialogInsertPass() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return MyDialogContent(
-          height: _height,
-          width: _width,
-          secondButton: 'Aceptar',
-          title: 'Contraseña',
-          subtitle: 'Inserte la contraseña',
-        );
-      },
-    );
   }
 
   Future<void> _loadPass() async {

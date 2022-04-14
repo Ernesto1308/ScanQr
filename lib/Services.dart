@@ -1,22 +1,23 @@
+import 'dart:convert';
+
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:dart_ping/dart_ping.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:vibration/vibration.dart';
+import 'package:http/http.dart' as http;
 
 class Services{
-  static Future<String> createJsonWebToken(String message, String mode, String idDevice, String password) async {
+  static Future<String> createJsonWebToken(Map map, String password) async {
     String token;
-
-    /* Sign */ {
+    /* Sign */
+    {
       // Create a json web token
       final jwt = JWT(
         {
-          'qr': message,
-          'mode': mode,
-          'idDevice': idDevice,
-        },
+          'data' : map
+        }
       );
 
       // Sign it
@@ -27,19 +28,22 @@ class Services{
     return token;
   }
 
-  static void verifyJsonWebToken(String token, String password){
-    /* Verify */ {
-
+  static JWT? verifyJsonWebToken(String token, String password){
+    /* Verify */
+    {
       try {
         // Verify a token
         final jwt = JWT.verify(token, SecretKey(password));
         //print('Payload:\n ${jwt.payload['qr']}\n ${jwt.payload['mode']}\n ${jwt.payload['idDevice']}');
+        return jwt;
       } on JWTExpiredError {
         Exception('jwt expired');
       } on JWTError catch (ex) {
         Exception(ex.message); // ex: invalid signature
       }
     }
+
+    return null;
   }
 
   static Future<bool> urlValidator(String text) async {
@@ -73,7 +77,19 @@ class Services{
     return result;
   }
 
-  static showToastSystem(Color color, String info, BuildContext context, double height, double width, double percentBottomLocation, double percentRightLocation, double percentLeftLocation) {
+  static TextStyle setLabelStyleInsertPass(bool focused){
+    TextStyle result;
+
+    if(focused){
+      result = TextStyle(fontSize: 16, color: Colors.green[600]);
+    } else{
+      result = TextStyle(fontSize: 16, color: Colors.green[900]);
+    }
+
+    return result;
+  }
+
+  static showToastSystem(Color color, Duration duration, String info, BuildContext context, double height, double width, double percentBottomLocation, double percentRightLocation, double percentLeftLocation) {
     FToast _fToast = FToast();
     _fToast.init(context);
 
@@ -99,7 +115,7 @@ class Services{
     // Custom Toast Position
     _fToast.showToast(
         child: toast,
-        toastDuration: const Duration(milliseconds: 2500),
+        toastDuration: duration,
         positionedToastBuilder: (context, child) {
           return Positioned(
             child: child,
@@ -111,7 +127,7 @@ class Services{
     );
   }
 
-  static showToastSemaphore(Color color, IconData icon,String info, BuildContext context, double height, double width, double percentBottomLocation, double percentRightLocation, double percentLeftLocation) {
+  static showToastSemaphore(Color color, Duration duration,  IconData icon,String info, BuildContext context, double height, double width, double percentBottomLocation, double percentRightLocation, double percentLeftLocation) {
     FToast _fToast = FToast();
     _fToast.init(context);
 
@@ -139,7 +155,7 @@ class Services{
     // Custom Toast Position
     _fToast.showToast(
         child: toast,
-        toastDuration: const Duration(milliseconds: 2500),
+        toastDuration: duration,
         positionedToastBuilder: (context, child) {
           return Positioned(
             child: child,
@@ -160,5 +176,23 @@ class Services{
         volume: 0.1,
         asAlarm: false
     );
+  }
+
+  static Future<bool> credentialVerifier(String idDevice, String url, String password) async {
+    await Future.delayed(const Duration(seconds: 10));
+    String token = await createJsonWebToken( {"idDevice" : idDevice}, password);
+    final response = await http.post(
+      Uri.parse(url),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'token': token,
+      }),
+    );
+    token = jsonDecode(response.body)['token'];
+    JWT? jwt = verifyJsonWebToken(token, password);
+
+    return jwt?.payload["credential"] == "active";
   }
 }

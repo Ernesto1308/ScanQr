@@ -134,8 +134,7 @@ class _ConfigurationState extends State<Configuration>{
           height: _height,
           width: _width,
           secondButton: 'Cambiar',
-          title: 'Nueva contraseña',
-          subtitle: 'Inserte la nueva contraseña',
+          title: 'Cambio de contraseña',
         );
       },
     );
@@ -258,15 +257,16 @@ class _ConfigurationState extends State<Configuration>{
       _anyError = true;
       _activeToast = true;
       Services.showToastSemaphore(
-        Colors.yellow[700],
-        Icons.wifi_off_outlined,
-        "El dispositivo no tiene\n acceso a Internet",
-        context,
-        _height,
-        _width,
-        0.12,
-        0.1,
-        0.1
+          Colors.yellow[700],
+          const Duration(milliseconds: 2500),
+          Icons.wifi_off_outlined,
+          "El dispositivo no tiene\n acceso a Internet",
+          context,
+          _height,
+          _width,
+          0.12,
+          0.1,
+          0.1
       );
     Services.notification();
     Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);

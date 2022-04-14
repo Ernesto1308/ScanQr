@@ -36,6 +36,9 @@ class _SignInState extends State<SignIn>{
   double _width;
   bool _connected = true;
   bool _active = false;
+  bool _enable = true;
+  String _idDevice;
+  Future<bool> _credentialActive;
 
   @override
   void initState() {
@@ -43,6 +46,10 @@ class _SignInState extends State<SignIn>{
     _nodeUrl.addListener(_handleFocusChangeUrl);
     _nodeCi = FocusNode();
     _nodeCi.addListener(_handleFocusChangeCi);
+    _loadUrl();
+    _loadCi();
+    _loadComponentsState();
+    _credentialActive = Services.credentialVerifier(_idDevice, _controllerUrl.text, '3rN35t0');
     super.initState();
   }
 
@@ -83,166 +90,177 @@ class _SignInState extends State<SignIn>{
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            scale: 2.1,
-            opacity: 0.2,
-            image: AssetImage('assets/Cujae.png'),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget> [
-            SizedBox(height: _height * 0.225,),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-              child: Text('Url',
-                style: TextStyle(fontSize: 17, color: Colors.black),
+      body: Stack(
+        children: <Widget> [
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                scale: 2.1,
+                opacity: 0.2,
+                image: AssetImage('assets/Cujae.png'),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TextField(
-                controller: _controllerUrl,
-                focusNode: _nodeUrl,
-                decoration: InputDecoration(
-                  errorText: _anyErrorUrl ? showMessageError() : null,
-                  labelText: 'Inserte la Url',
-                  labelStyle: Services.setLabelStyle(_focusedUrl, _anyErrorUrl),
-                  fillColor: Colors.white,
-                  filled: true,
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      style: BorderStyle.solid,
-                      color: Colors.green[900],
-                      width: 1.0,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget> [
+                SizedBox(height: _height * 0.225,),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                  child: Text('Url',
+                    style: TextStyle(
+                        fontSize: 17,
+                        color: _enable ? Colors.black : Colors.grey
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      style: BorderStyle.solid,
-                      color: Colors.green[600],
-                      width: 1.0,
-                    ),
-                  ),
-                  border: const OutlineInputBorder(),
                 ),
-                cursorColor: Colors.grey,
-                onSubmitted: (text) async {
-                  bool data = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
-
-                  setState(() {
-                    errorHandlerUrl(data);
-                  });
-                },
-              ),
-            ),
-            SizedBox(height: _height * 0.02,),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-              child: Text('CI',
-                style: TextStyle(fontSize: 17, color: Colors.black),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TextField(
-                controller: _controllerCi,
-                maxLength: 11,
-                focusNode: _nodeCi,
-                decoration: InputDecoration(
-                  errorText: _anyErrorCi ? showMessageErrorCi() : null,
-                  labelText: 'Inserte su carnet de identidad',
-                  labelStyle: Services.setLabelStyle(_focusedCi, _anyErrorCi),
-                  fillColor: Colors.white,
-                  filled: true,
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      style: BorderStyle.solid,
-                      color: Colors.green[900],
-                      width: 1.0,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: TextField(
+                    enabled: _enable,
+                    keyboardType: TextInputType.url,
+                    controller: _controllerUrl,
+                    focusNode: _nodeUrl,
+                    style: TextStyle(
+                        color: _enable ? Colors.black : Colors.grey
                     ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      style: BorderStyle.solid,
-                      color: Colors.green[600],
-                      width: 1.0,
+                    decoration: InputDecoration(
+                      errorText: _anyErrorUrl ? showMessageError() : null,
+                      labelText: 'Inserte la Url',
+                      labelStyle: _setLabelStyleSignIn(_focusedUrl, _anyErrorUrl),
+                      fillColor: Colors.white,
+                      filled: true,
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          style: BorderStyle.solid,
+                          color: Colors.green[900],
+                          width: 1.0,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          style: BorderStyle.solid,
+                          color: Colors.green[600],
+                          width: 1.0,
+                        ),
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
+                    cursorColor: Colors.grey,
+                    onSubmitted: (text) async {
+                      setState(() {
+                        errorHandlerUrl();
+                      });
+                    },
                   ),
-                  border: const OutlineInputBorder(),
                 ),
-                cursorColor: Colors.grey,
-                onSubmitted: (text) {
-                  setState(() {
-                    errorHandlerCi();
-                  });
-                },
-              ),
-            ),
-            SizedBox(height: _height * 0.2,),
-            Row(
-              children: <Widget>[
-                SizedBox(width: _width * 0.38,),
-                ElevatedButton(
-                  style: raisedButtonStyle,
-                  onPressed: () async {
-                    bool internet = await InternetConnectionChecker().hasConnection;
-                    bool data = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
-
-                    setState(() {
-                      errorHandlerCi();
-                      errorHandlerUrl(data);
-                      _connected = internet;
-                    });
-
-                    if (!_anyErrorCi && !_anyErrorUrl && _connected){
-                      String device = await _featureDevice();
-                      String token = await _createJsonWebTokenEnroll(_controllerCi.text, device, '3rN35t0');/*
-                      final response = await http.post(
-                        Uri.parse("www.google.com"),
-                        headers: <String, String>{
-                          'Content-Type': 'application/json; charset=UTF-8',
-                        },
-                        body: jsonEncode(<String, String>{
-                          'token': token,
-                        }),
-                      );*/
-                      _verifyJsonWebTokenEnroll(token, '3rN35t0');
-                      _setControllerEnroll();
-                      Navigator.pushNamed(
-                          context,
-                          '/url',
-                          arguments: {
-                            'before': "role",
-                            'idDevice': "20202020"
-                          }
-                      );
-                    } else if(!_connected && !_active){
-                      _active = true;
-                      Services.showToastSemaphore(
-                          Colors.yellow[700],
-                          Icons.wifi_off_outlined,
-                          "El dispositivo no tiene\n acceso a Internet",
-                          context,
-                          _height,
-                          _width,
-                          0.205,
-                          0.2,
-                          0.2
-                      );
-                      Services.notification();
-                      Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
-                    }
-                  },
-                  child: const Text('Enrolar'),
+                SizedBox(height: _height * 0.02,),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                  child: Text('CI',
+                    style: TextStyle(
+                        fontSize: 17,
+                        color: _enable ? Colors.black : Colors.grey
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: TextField(
+                    enabled: _enable,
+                    controller: _controllerCi,
+                    maxLength: 11,
+                    focusNode: _nodeCi,
+                    style: TextStyle(
+                        color: _enable ? Colors.black : Colors.grey
+                    ),
+                    decoration: InputDecoration(
+                      errorText: _anyErrorCi ? showMessageErrorCi() : null,
+                      labelText: 'Inserte su carnet de identidad',
+                      labelStyle: _setLabelStyleSignIn(_focusedCi, _anyErrorCi),
+                      fillColor: Colors.white,
+                      filled: true,
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          style: BorderStyle.solid,
+                          color: Colors.green[900],
+                          width: 1.0,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          style: BorderStyle.solid,
+                          color: Colors.green[600],
+                          width: 1.0,
+                        ),
+                      ),
+                      border: const OutlineInputBorder(),
+                    ),
+                    cursorColor: Colors.grey,
+                    onSubmitted: (text) {
+                      setState(() {
+                        errorHandlerCi();
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(height: _height * 0.2,),
+                Row(
+                  children: <Widget>[
+                    SizedBox(width: _width * 0.38,),
+                    ElevatedButton(
+                      style: raisedButtonStyle,
+                      onPressed: _enable ? () => _buttonEnabled() : null,
+                      child: const Text('Enrolar'),
+                    ),
+                  ],
                 ),
               ],
-            )
-          ],
-        ),
+            ),
+          ),
+          if(!_enable) FutureBuilder<bool>(
+            future: _credentialActive,
+            builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+              if(snapshot.connectionState != ConnectionState.done){
+                return Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.green[900],
+                    )
+                );
+              } else {
+                if (snapshot.data){
+                  Future.delayed(
+                      const Duration(seconds: 1),
+                          () async {
+                        await _loadIdDevice();
+                        Navigator.pushNamed(
+                            context,
+                            '/url',
+                            arguments: {
+                              'before': "role",
+                              'idDevice': "20022002"//_idDevice
+                            }
+                        );
+                      }
+                  );
+                } else {
+                  Future.delayed(const Duration(seconds: 1), ()=> Services.showToastSystem(
+                      Colors.grey[350],
+                      const Duration(milliseconds: 4500),
+                      "Su credencial aún no está activa",
+                      context,
+                      _height,
+                      _width,
+                      0.25,
+                      0.1,
+                      0.1
+                  ));
+                }
+                return const Center();
+              }
+            },
+          ),
+        ],
       ),
     );
   }
@@ -256,6 +274,101 @@ class _SignInState extends State<SignIn>{
       borderRadius: BorderRadius.all(Radius.circular(10)),
     ),
   );
+
+  void _buttonEnabled() async {
+    _connected = await InternetConnectionChecker().hasConnection;
+
+    setState(() {
+      errorHandlerCi();
+      errorHandlerUrl();
+    });
+
+    if (!_anyErrorCi && !_anyErrorUrl && _connected){
+      await _setControllerUrl();
+      await _setControllerCi();
+      String device = await _featureDevice();
+      String token = await Services.createJsonWebToken({'ci': _controllerCi.text, 'phoneFeatures': device}, '3rN35t0');
+      final response = await http.post(
+        Uri.parse(_controllerUrl.text),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'token': token,
+        }),
+      );
+      token = jsonDecode(response.body)['token'];
+      JWT jwt = Services.verifyJsonWebToken(token, '3rN35t0');
+      _setControllerEnroll();
+
+      setState(() {
+        _enable = false;
+      });
+
+      await _setComponentsState();
+
+      if (jwt.payload['id_device'] != '0'){
+        setState(() {
+          _idDevice = jwt.payload['id_device'];
+        });
+
+        _setControllerIdDevice();
+
+        bool activeCredential = await Services.credentialVerifier(_idDevice, _controllerUrl.text, '3rN35t0');
+
+        if (activeCredential){
+          Navigator.pushNamed(
+              context,
+              '/url',
+              arguments: {
+                'before': "role",
+                'idDevice': "20022002"//_idDevice
+              }
+          );
+        } else {
+          Services.showToastSystem(
+              Colors.grey[350],
+              const Duration(milliseconds: 4500),
+              "Su credencial aún no está activa",
+              context,
+              _height,
+              _width,
+              0.25,
+              0.1,
+              0.1
+          );
+        }
+      } else {
+        Services.showToastSystem(
+            Colors.grey[350],
+            const Duration(milliseconds: 2500),
+            "En estos momentos no está\n disponible su acceso, por favor\n contacte con un administrador",
+            context,
+            _height,
+            _width,
+            0.23,
+            0.1,
+            0.1
+        );
+      }
+    } else if(!_connected && !_active){
+      _active = true;
+      Services.showToastSemaphore(
+          Colors.yellow[700],
+          const Duration(milliseconds: 2500),
+          Icons.wifi_off_outlined,
+          "El dispositivo no tiene\n acceso a Internet",
+          context,
+          _height,
+          _width,
+          0.205,
+          0.2,
+          0.2
+      );
+      Services.notification();
+      Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
+    }
+  }
 
   void errorHandlerCi() {
     String ci = _controllerCi.text;
@@ -291,8 +404,11 @@ class _SignInState extends State<SignIn>{
     _anyErrorCi = _fieldEmptyCi || _notContainJustNumbers || _invalidLength || _invalidDateCi;
   }
 
-  void errorHandlerUrl(bool data){
-    if(_controllerUrl.text.isEmpty) {
+  Future<void> errorHandlerUrl() async {
+    String url = _controllerUrl.text;
+    bool data = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
+
+    if(url.isEmpty) {
       _invalidUrl = false;
       _fieldEmptyUrl = true;
     } else if(data){
@@ -374,6 +490,70 @@ class _SignInState extends State<SignIn>{
     prefs.setBool('isEnroll', true);
   }
 
+  Future<void> _setControllerUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('url', _controllerUrl.text);
+    });
+  }
+
+  Future<void> _loadUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _controllerUrl.text = (prefs.getString('url'));
+    });
+  }
+
+  Future<void> _setControllerCi() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('ci', _controllerCi.text);
+    });
+  }
+
+  Future<void> _loadCi() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _controllerCi.text = (prefs.getString('ci'));
+    });
+  }
+
+  Future<void> _setComponentsState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setBool('enabled', _enable);
+    });
+  }
+
+  Future<void> _loadComponentsState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      if (prefs.getBool('enabled')!= null) {
+        _enable = prefs.getBool('enabled');
+      }
+    });
+  }
+
+  Future<void> _setControllerIdDevice() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('idDevice', _idDevice);
+    });
+  }
+
+  Future<String> _loadIdDevice() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    return (prefs.getString('idDevice'));
+  }
+
   Future<String> _featureDevice() async {
     String manufacturer = '',
         productName = '';
@@ -388,38 +568,23 @@ class _SignInState extends State<SignIn>{
     return manufacturer + " " + productName;
   }
 
-  Future<String> _createJsonWebTokenEnroll(String ci, String phoneFeatures, String password) async {
-    String token;
+  TextStyle _setLabelStyleSignIn(bool focused, bool anyError){
+    TextStyle result;
 
-    /* Sign */ {
-      // Create a json web token
-      final jwt = JWT(
-        {
-          'ci': ci,
-          'phoneFeatures': phoneFeatures,
-        },
-      );
-
-      // Sign it
-      token = jwt.sign(SecretKey(password));
-      //print('Signed token: $token\n');
+    if(focused){
+      result = TextStyle(fontSize: 16, color: Colors.green[600]);
+    } else{
+      result = TextStyle(fontSize: 16, color: Colors.green[900]);
     }
 
-    return token;
-  }
-
-  void _verifyJsonWebTokenEnroll(String token, String password){
-    /* Verify */ {
-
-      try {
-        // Verify a token
-        final jwt = JWT.verify(token, SecretKey(password));
-        print('Payload: ${jwt.payload['ci']}\n ${jwt.payload['phoneFeatures']}');
-      } on JWTExpiredError {
-        Exception('jwt expired');
-      } on JWTError catch (ex) {
-        Exception(ex.message); // ex: invalid signature
-      }
+    if (anyError){
+      result = const TextStyle(fontSize: 16, color: Colors.red);
     }
+
+    if (!_enable){
+      result = const TextStyle(fontSize: 16, color: Colors.grey);
+    }
+
+    return result;
   }
 }
