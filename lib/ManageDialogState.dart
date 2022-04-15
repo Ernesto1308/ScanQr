@@ -10,13 +10,15 @@ class MyDialogContent extends StatefulWidget {
     @required this.title,
     @required this.secondButton,
     @required this.height,
-    @required this.width
+    @required this.width,
+    this.currentPass
   }): super(key: key);
 
   final String title;
   final String secondButton;
   final double height;
   final double width;
+  final String currentPass;
 
   @override
   _MyDialogContentState createState() => _MyDialogContentState();
@@ -25,12 +27,12 @@ class MyDialogContent extends StatefulWidget {
 class _MyDialogContentState extends State<MyDialogContent> {
   bool _isObscure = true;
   bool _focused = false;
-  bool _isNotEmpty = true;
+  bool _anyError = true;
   bool _insertPassDialog = true;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final String _developerPassword = "1234";
+  String _currentPass;
   final _controller = TextEditingController();
-
 
   @override
   void initState(){
@@ -40,6 +42,11 @@ class _MyDialogContentState extends State<MyDialogContent> {
   @override
   Widget build(BuildContext context) {
     _insertPassDialog = widget.secondButton == 'Aceptar';
+    if(_insertPassDialog){
+      _setControllerCurrentPass();
+    } else {
+      _loadCurrentPass();
+    }
 
     return _getContent();
   }
@@ -57,11 +64,11 @@ class _MyDialogContentState extends State<MyDialogContent> {
               key: _formKey,
               child: TextFormField(
                   obscureText: _isObscure,
-                  cursorColor: _isNotEmpty ? Colors.green[600] : Colors.red,
+                  cursorColor: _anyError ? Colors.green[600] : Colors.red,
                   controller: _controller,
                   decoration: InputDecoration(
                     hintText: _insertPassDialog ? "Inserte la contraseña" : "Nueva contraseña",
-                    hintStyle: _insertPassDialog ? Services.setLabelStyleInsertPass(_focused) : Services.setLabelStyle(_focused, !_isNotEmpty),
+                    hintStyle: _insertPassDialog ? Services.setLabelStyleInsertPass(_focused) : Services.setLabelStyle(_focused, !_anyError),
                     border: const UnderlineInputBorder(),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(
@@ -91,12 +98,20 @@ class _MyDialogContentState extends State<MyDialogContent> {
                     ),
                   ),
                   validator: (text){
-                    return text.isEmpty ? "Este campo no puede estar vacío" : null;
+                    String result;
+
+                    if (text.isEmpty){
+                      result = "Este campo no puede estar vacío";
+                    } else if (text == _currentPass){
+                      result = "Por favor introduzca una contraseña\ndiferentre a la actual";
+                    }
+
+                    return result;
                   },
                   onFieldSubmitted: (text){
                     setState(() {
                       _focused = false;
-                      if (!_insertPassDialog) _isNotEmpty = _formKey.currentState.validate();
+                      if (!_insertPassDialog) _anyError = _formKey.currentState.validate();
                     });
                   },
                   onTap: (){
@@ -142,7 +157,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
                 _controller.clear();
                 Navigator.of(context).pop();
                 Services.showToastSystem(
-                    Colors.grey[300],
+                    Colors.grey[350],
                     const Duration(milliseconds: 2500),
                     "Contraseña incorrecta",
                     context,
@@ -156,9 +171,9 @@ class _MyDialogContentState extends State<MyDialogContent> {
               }
             } else {
               setState(() {
-                _isNotEmpty = _formKey.currentState.validate();
+                _anyError = _formKey.currentState.validate();
               });
-              if (_isNotEmpty){
+              if (_anyError){
                 await _setControllerPass();
                 _controller.clear();
                 Navigator.of(context).pop();
@@ -182,6 +197,22 @@ class _MyDialogContentState extends State<MyDialogContent> {
     );
   }
 
+  Color _manageEyeColor(){
+    Color finalColor;
+
+    if(_insertPassDialog){
+      finalColor = _focused ? Colors.green[600] : Colors.green[900];
+    } else {
+      if(_anyError){
+        finalColor = _focused ? Colors.green[600] : Colors.green[900];
+      } else {
+        finalColor = Colors.red;
+      }
+    }
+
+    return finalColor;
+  }
+
   Future<void> _setControllerPass() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -190,19 +221,19 @@ class _MyDialogContentState extends State<MyDialogContent> {
     });
   }
 
-  Color _manageEyeColor(){
-    Color finalColor;
+  Future<void> _loadCurrentPass() async {
+    final prefs = await SharedPreferences.getInstance();
 
-    if(_insertPassDialog){
-      finalColor = _focused ? Colors.green[600] : Colors.green[900];
-    } else {
-      if(_isNotEmpty){
-        finalColor = _focused ? Colors.green[600] : Colors.green[900];
-      } else {
-        finalColor = Colors.red;
-      }
-    }
+    setState(() {
+      _currentPass = (prefs.getString('currentPass'));
+    });
+  }
 
-    return finalColor;
+  Future<void> _setControllerCurrentPass() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('currentPass', widget.currentPass);
+    });
   }
 }

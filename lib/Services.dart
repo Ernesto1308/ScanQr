@@ -194,5 +194,6 @@ class Services{
     JWT? jwt = verifyJsonWebToken(token, password);
 
     return jwt?.payload["credential"] == "active";
+    //return true;
   }
 }

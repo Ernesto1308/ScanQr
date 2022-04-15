@@ -69,9 +69,9 @@ class _UrlState extends State<Url>{
         }
       }
 
+      _loadUrl();
       _loadPass();
       _loadIdDevice();
-      _loadUrl();
       _firstBuild = false;
     }
 
@@ -263,18 +263,36 @@ class _UrlState extends State<Url>{
             _connected = await InternetConnectionChecker().hasConnection;
 
             if(_connected && _url != "" && _url != null) {
-              await _loadIdDevice();
-              Navigator.pushNamed(
-                  context,
-                  '/scanner',
-                  arguments: {
-                    'address': _url,
-                    'mode': _characterAccess.name,
-                    'sendDataMode': _characterSendData.name,
-                    'encryptionPass': _newPass ?? _defaultEncryptionPass,
-                    'idDevice': _idDevice
-                  }
-              );
+              bool activeCredential = await Services.credentialVerifier(_idDevice, _url, _newPass ?? _defaultEncryptionPass);
+
+              if(activeCredential){
+                Navigator.pushNamed(
+                    context,
+                    '/scanner',
+                    arguments: {
+                      'address': _url,
+                      'mode': _characterAccess.name,
+                      'sendDataMode': _characterSendData.name,
+                      'encryptionPass': _newPass ?? _defaultEncryptionPass,
+                      'idDevice': _idDevice
+                    }
+                );
+              } else if (!_activeToast){
+                _activeToast = true;
+                Services.showToastSystem(
+                    Colors.grey[350],
+                    const Duration(milliseconds: 2500),
+                    "Su credencial ha sido desactivada",
+                    context,
+                    _height,
+                    _width,
+                    0.12,
+                    0.1,
+                    0.1
+                );
+                Services.notification();
+                Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
+              }
             } else if(!_connected && !_activeToast){
               _activeToast = true;
               Services.showToastSemaphore(
@@ -325,7 +343,8 @@ class _UrlState extends State<Url>{
           height: _height,
           width: _width,
           secondButton: 'Aceptar',
-          title: 'Contraseña'
+          title: 'Contraseña',
+          currentPass: _newPass ?? _defaultEncryptionPass,
         );
       },
     );

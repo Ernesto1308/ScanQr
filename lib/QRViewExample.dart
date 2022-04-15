@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:flutter/material.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
@@ -255,7 +256,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     );
   }
 
-  Future<bool> _createPost(String address, String token) async {
+  Future<String> _createPost(String address, String token) async {
     try {
       final response = await http.post(
         Uri.parse(address),
@@ -266,9 +267,10 @@ class _QRViewExampleState extends State<QRViewExample> {
           'token': token,
         }),
       );
-
-      int value = jsonDecode(response.body)['_arguments'];
-      return value != 0 && value != null;
+/*
+      int value = jsonDecode(response.body)['data'];
+      return value != 0 && value != null;*/
+      return jsonDecode(response.body)['token'];
     } catch (e){
       throw Exception('Failed to send data');
     }
@@ -296,12 +298,16 @@ class _QRViewExampleState extends State<QRViewExample> {
         'idDevice': _arguments['idDevice'],
       };
       String token = await Services.createJsonWebToken(map, _arguments['encryptionPass']);
-      _accepted = await _createPost(_arguments['address'], token);
-      Services.verifyJsonWebToken(token, _arguments['encryptionPass']);
+      token = await _createPost(
+          _arguments['mode'] == "Portero" ? _arguments['address'] + "/aut" : _arguments['address'] + "/reg",
+          token
+      );
+      JWT jwt = Services.verifyJsonWebToken(token, _arguments['encryptionPass']);
+      _accepted = jwt.payload['data'] != 0;
 
       if (_accepted){
         Services.showToastSemaphore(
-            Colors.greenAccent,
+            Colors.green[500],
             const Duration(milliseconds: 2500),
             Icons.check,
             "Acceso Permitido",

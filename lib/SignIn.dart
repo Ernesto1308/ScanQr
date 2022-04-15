@@ -22,6 +22,7 @@ class _SignInState extends State<SignIn>{
   bool _focusedUrl = false;
   bool _fieldEmptyUrl = false;
   bool _invalidUrl = false;
+  bool _invalidEndpoint = false;
   bool _anyErrorUrl = false;
   final _controllerCi = TextEditingController();
   FocusNode _nodeCi;
@@ -230,8 +231,7 @@ class _SignInState extends State<SignIn>{
               } else {
                 if (snapshot.data){
                   Future.delayed(
-                      const Duration(seconds: 1),
-                          () async {
+                      const Duration(seconds: 1), () async {
                         await _loadIdDevice();
                         Navigator.pushNamed(
                             context,
@@ -255,6 +255,7 @@ class _SignInState extends State<SignIn>{
                       0.1,
                       0.1
                   ));
+                  Services.notification();
                 }
                 return const Center();
               }
@@ -288,6 +289,11 @@ class _SignInState extends State<SignIn>{
       await _setControllerCi();
       String device = await _featureDevice();
       String token = await Services.createJsonWebToken({'ci': _controllerCi.text, 'phoneFeatures': device}, '3rN35t0');
+
+      if (!_controllerUrl.text.endsWith("/enroll")){
+        _controllerUrl.text = _controllerUrl.text + "/enroll";
+      }
+
       final response = await http.post(
         Uri.parse(_controllerUrl.text),
         headers: <String, String>{
@@ -337,6 +343,7 @@ class _SignInState extends State<SignIn>{
               0.1,
               0.1
           );
+          Services.notification();
         }
       } else {
         Services.showToastSystem(
@@ -350,6 +357,7 @@ class _SignInState extends State<SignIn>{
             0.1,
             0.1
         );
+        Services.notification();
       }
     } else if(!_connected && !_active){
       _active = true;
@@ -409,17 +417,24 @@ class _SignInState extends State<SignIn>{
     bool data = _controllerUrl.text.startsWith("w") ? await Services.urlValidator(_controllerUrl.text) : await Services.launchURL(_controllerUrl.text);
 
     if(url.isEmpty) {
+      _invalidEndpoint = false;
       _invalidUrl = false;
       _fieldEmptyUrl = true;
     } else if(data){
+      _invalidEndpoint = false;
       _fieldEmptyUrl = false;
       _invalidUrl = true;
-    }else{
+    } else if(url.endsWith("/reg") || url.endsWith("/aut")){
+      _invalidUrl = false;
+      _fieldEmptyUrl = false;
+      _invalidEndpoint = true;
+    } else{
+      _invalidEndpoint = false;
       _invalidUrl = false;
       _fieldEmptyUrl = false;
     }
 
-    _anyErrorUrl = _fieldEmptyUrl || _invalidUrl;
+    _anyErrorUrl = _fieldEmptyUrl || _invalidUrl || _invalidEndpoint;
   }
 
   String showMessageError(){
@@ -427,8 +442,10 @@ class _SignInState extends State<SignIn>{
 
     if(_fieldEmptyUrl) {
       stringError = "Este campo no puede estar vacío";
-    } else {
+    } else if(_invalidUrl){
       stringError = "La URL no es válida";
+    } else {
+      stringError = "Solo se permite el endpoint /enroll";
     }
 
     return stringError;
