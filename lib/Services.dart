@@ -9,16 +9,12 @@ import 'package:vibration/vibration.dart';
 import 'package:http/http.dart' as http;
 
 class Services{
-  static Future<String> createJsonWebToken(Map map, String password) async {
+  static Future<String> createJsonWebToken(Map<String, dynamic> map, String password) async {
     String token;
     /* Sign */
     {
       // Create a json web token
-      final jwt = JWT(
-        {
-          'data' : map
-        }
-      );
+      final jwt = JWT(map);
 
       // Sign it
       token = jwt.sign(SecretKey(password));
@@ -178,8 +174,7 @@ class Services{
     );
   }
 
-  static Future<bool> credentialVerifier(String idDevice, String url, String password) async {
-    await Future.delayed(const Duration(seconds: 10));
+  static Future<JWT?> providerCredentialInfo(String idDevice, String url, String password) async {
     String token = await createJsonWebToken( {"idDevice" : idDevice}, password);
     final response = await http.post(
       Uri.parse(url),
@@ -191,9 +186,8 @@ class Services{
       }),
     );
     token = jsonDecode(response.body)['token'];
-    JWT? jwt = verifyJsonWebToken(token, password);
 
-    return jwt?.payload["credential"] == "active";
+    return verifyJsonWebToken(token, password);
     //return true;
   }
 }

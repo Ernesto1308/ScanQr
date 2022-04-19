@@ -133,8 +133,8 @@ class _ConfigurationState extends State<Configuration>{
         return MyDialogContent(
           height: _height,
           width: _width,
-          secondButton: 'Cambiar',
-          title: 'Cambio de contraseña',
+          secondButton: 'Aceptar',
+          title: 'Contraseña actual de encriptación',
         );
       },
     );
@@ -227,22 +227,6 @@ class _ConfigurationState extends State<Configuration>{
     return stringError;
   }
 
-  void _loadText() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      _controllerUrl.text = (prefs.getString('urlSaved') ?? "");
-    });
-  }
-
-  Future<void> _setController() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      prefs.setString('urlSaved', _controllerUrl.text);
-    });
-  }
-
   Future<void> _manageProblemInternet() async {
     _connected = await InternetConnectionChecker().hasConnection;
 
@@ -268,9 +252,25 @@ class _ConfigurationState extends State<Configuration>{
           0.1,
           0.1
       );
-    Services.notification();
-    Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
+      Services.notification();
+      Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
     }
+  }
+
+  void _loadText() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _controllerUrl.text = (prefs.getString('urlSaved') ?? "");
+    });
+  }
+
+  Future<void> _setController() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('urlSaved', _controllerUrl.text);
+    });
   }
 
   Future<void> _loadPass() async {

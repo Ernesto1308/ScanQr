@@ -20,7 +20,7 @@ class QRViewExample extends StatefulWidget {
 
 class _QRViewExampleState extends State<QRViewExample> {
   QRViewController controller;
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  final qrKey = GlobalKey(debugLabel: 'QR');
   bool _flashOn = false;
   bool _accepted = false;
   String _message;
@@ -31,7 +31,7 @@ class _QRViewExampleState extends State<QRViewExample> {
   bool _firstBuild = true;
   bool _connected = true;
   bool _active = false;
-  Map _arguments = {};
+  Map<String, String> _arguments = {};
 
   @override
   void reassemble() {
@@ -267,9 +267,7 @@ class _QRViewExampleState extends State<QRViewExample> {
           'token': token,
         }),
       );
-/*
-      int value = jsonDecode(response.body)['data'];
-      return value != 0 && value != null;*/
+
       return jsonDecode(response.body)['token'];
     } catch (e){
       throw Exception('Failed to send data');
@@ -292,10 +290,12 @@ class _QRViewExampleState extends State<QRViewExample> {
     _connected = await InternetConnectionChecker().hasConnection;
 
     if (_connected){
-      Map map = {
-        'qr': _message,
-        'mode': _arguments['mode'],
-        'idDevice': _arguments['idDevice'],
+      Map<String, dynamic> map = {
+        'id_device': _arguments['idDevice'],
+        'data': {
+          'qr': _message,
+          'mode': _arguments['mode'],
+        }
       };
       String token = await Services.createJsonWebToken(map, _arguments['encryptionPass']);
       token = await _createPost(
@@ -303,34 +303,50 @@ class _QRViewExampleState extends State<QRViewExample> {
           token
       );
       JWT jwt = Services.verifyJsonWebToken(token, _arguments['encryptionPass']);
-      _accepted = jwt.payload['data'] != 0;
 
-      if (_accepted){
-        Services.showToastSemaphore(
-            Colors.green[500],
-            const Duration(milliseconds: 2500),
-            Icons.check,
-            "Acceso Permitido",
-            context,
-            _height,
-            _width,
-            0.27,
-            0.17,
-            0.17
-        );
+      if (jwt.payload['status'] == 'success'){
+        _accepted = jwt.payload['data']['data'] != '0';
+
+        if (_accepted){
+          Services.showToastSemaphore(
+              Colors.green[500],
+              const Duration(milliseconds: 2500),
+              Icons.check,
+              "Acceso Permitido",
+              context,
+              _height,
+              _width,
+              0.27,
+              0.17,
+              0.17
+          );
+        } else {
+          Services.showToastSemaphore(
+              Colors.red,
+              const Duration(milliseconds: 2500),
+              Icons.warning_amber_outlined,
+              "Acceso Denegado",
+              context,
+              _height,
+              _width,
+              0.27,
+              0.17,
+              0.17
+          );
+        }
       } else {
-        Services.showToastSemaphore(
-            Colors.red,
+        Services.showToastSystem(
+            Colors.grey[350],
             const Duration(milliseconds: 2500),
-            Icons.warning_amber_outlined,
-            "Acceso Denegado",
+            "Formato Qr incorrecto",
             context,
             _height,
             _width,
             0.27,
-            0.17,
-            0.17
+            0.1,
+            0.1
         );
+        Services.notification();
       }
 
       setState(() {

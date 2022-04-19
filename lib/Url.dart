@@ -1,4 +1,5 @@
 // @dart=2.9
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:flutter/material.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:scanqr/ManageDialogState.dart';
@@ -23,11 +24,11 @@ class _UrlState extends State<Url>{
   double _width;
   bool _connected = true;
   bool _activeToast = false;
-  final String _defaultEncryptionPass = '3rN35t0';
+  final _defaultEncryptionPass = '3rN35t0';
   String _newPass;
   String _url;
   String _idDevice;
-  Map _arguments = {};
+  Map<String, String> _arguments = {};
 
   @override
   void initState() {
@@ -263,9 +264,9 @@ class _UrlState extends State<Url>{
             _connected = await InternetConnectionChecker().hasConnection;
 
             if(_connected && _url != "" && _url != null) {
-              bool activeCredential = await Services.credentialVerifier(_idDevice, _url, _newPass ?? _defaultEncryptionPass);
+              JWT credential = await Services.providerCredentialInfo(_idDevice, _url, _newPass ?? _defaultEncryptionPass);
 
-              if(activeCredential){
+              if(credential.payload["data"]["status_device"] == "1"){
                 Navigator.pushNamed(
                     context,
                     '/scanner',
@@ -277,7 +278,7 @@ class _UrlState extends State<Url>{
                       'idDevice': _idDevice
                     }
                 );
-              } else if (!_activeToast){
+              } else if (credential.payload["data"]["status_device"] == "-1" && !_activeToast){
                 _activeToast = true;
                 Services.showToastSystem(
                     Colors.grey[350],
@@ -343,8 +344,8 @@ class _UrlState extends State<Url>{
           height: _height,
           width: _width,
           secondButton: 'Aceptar',
-          title: 'Contraseña',
-          currentPass: _newPass ?? _defaultEncryptionPass,
+          title: 'Contraseña de desarrollador',
+          currentEncryptionPass: _newPass ?? _defaultEncryptionPass,
         );
       },
     );

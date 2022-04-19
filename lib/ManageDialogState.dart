@@ -5,20 +5,20 @@ import 'Configuration.dart';
 import 'Services.dart';
 
 class MyDialogContent extends StatefulWidget {
-  const MyDialogContent({
+  MyDialogContent({
     Key key,
     @required this.title,
     @required this.secondButton,
     @required this.height,
     @required this.width,
-    this.currentPass
+    this.currentEncryptionPass
   }): super(key: key);
 
-  final String title;
-  final String secondButton;
+  String title;
+  String secondButton;
   final double height;
   final double width;
-  final String currentPass;
+  final String currentEncryptionPass;
 
   @override
   _MyDialogContentState createState() => _MyDialogContentState();
@@ -27,11 +27,13 @@ class MyDialogContent extends StatefulWidget {
 class _MyDialogContentState extends State<MyDialogContent> {
   bool _isObscure = true;
   bool _focused = false;
-  bool _anyError = true;
-  bool _insertPassDialog = true;
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final String _developerPassword = "1234";
-  String _currentPass;
+  bool _noError = true;
+  bool _insertDeveloperPass = false;
+  bool _insertEncryptionPass = false;
+  bool _changeEncryptionPass = false;
+  final _formKey = GlobalKey<FormState>();
+  final _developerPassword = "l3ktorqr*cuj@e";
+  String _currentEncryptionPass;
   final _controller = TextEditingController();
 
   @override
@@ -41,11 +43,12 @@ class _MyDialogContentState extends State<MyDialogContent> {
 
   @override
   Widget build(BuildContext context) {
-    _insertPassDialog = widget.secondButton == 'Aceptar';
-    if(_insertPassDialog){
-      _setControllerCurrentPass();
+    if (widget.title == 'Contraseña actual de encriptación'){
+      _insertEncryptionPass = true;
+    } else if (widget.secondButton == 'Aceptar'){
+      _insertDeveloperPass = true;
     } else {
-      _loadCurrentPass();
+      _changeEncryptionPass = true;
     }
 
     return _getContent();
@@ -64,11 +67,11 @@ class _MyDialogContentState extends State<MyDialogContent> {
               key: _formKey,
               child: TextFormField(
                   obscureText: _isObscure,
-                  cursorColor: _anyError ? Colors.green[600] : Colors.red,
+                  cursorColor: _noError ? Colors.green[600] : Colors.red,
                   controller: _controller,
                   decoration: InputDecoration(
-                    hintText: _insertPassDialog ? "Inserte la contraseña" : "Nueva contraseña",
-                    hintStyle: _insertPassDialog ? Services.setLabelStyleInsertPass(_focused) : Services.setLabelStyle(_focused, !_anyError),
+                    hintText: !_changeEncryptionPass ? "Contraseña" : "Nueva contraseña",
+                    hintStyle: _insertDeveloperPass ? Services.setLabelStyleInsertPass(_focused) : Services.setLabelStyle(_focused, !_noError),
                     border: const UnderlineInputBorder(),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(
@@ -102,7 +105,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
 
                     if (text.isEmpty){
                       result = "Este campo no puede estar vacío";
-                    } else if (text == _currentPass){
+                    } else if (text == _currentEncryptionPass){
                       result = "Por favor introduzca una contraseña\ndiferentre a la actual";
                     }
 
@@ -111,7 +114,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
                   onFieldSubmitted: (text){
                     setState(() {
                       _focused = false;
-                      if (!_insertPassDialog) _anyError = _formKey.currentState.validate();
+                      if (_changeEncryptionPass) _noError = _formKey.currentState.validate();
                     });
                   },
                   onTap: (){
@@ -145,7 +148,8 @@ class _MyDialogContentState extends State<MyDialogContent> {
             ),
           ),
           onPressed: () async {
-            if (_insertPassDialog){
+            if (_insertDeveloperPass){
+              await _setControllerCurrentPass();
               if (_controller.text == _developerPassword){
                 Navigator.push(
                     context,
@@ -169,11 +173,12 @@ class _MyDialogContentState extends State<MyDialogContent> {
                 );
                 Services.notification();
               }
-            } else {
+            } else if (_changeEncryptionPass){
+              await _loadCurrentPass();
               setState(() {
-                _anyError = _formKey.currentState.validate();
+                _noError = _formKey.currentState.validate();
               });
-              if (_anyError){
+              if (_noError){
                 await _setControllerPass();
                 _controller.clear();
                 Navigator.of(context).pop();
@@ -181,6 +186,30 @@ class _MyDialogContentState extends State<MyDialogContent> {
                     Colors.grey[300],
                     const Duration(milliseconds: 2500),
                     "Contraseña cambiada exitosamente",
+                    context,
+                    widget.height,
+                    widget.width,
+                    0.1,
+                    0.1,
+                    0.1
+                );
+                Services.notification();
+              }
+            } else {
+              await _loadCurrentPass();
+              if (_controller.text == _currentEncryptionPass){
+                setState(() {
+                  widget.secondButton = 'Cambiar';
+                  widget.title = 'Cambiar de contraseña de encriptación';
+                  _controller.clear();
+                });
+              } else {
+                Navigator.of(context).pop();
+                _controller.clear();
+                Services.showToastSystem(
+                    Colors.grey[350],
+                    const Duration(milliseconds: 2500),
+                    "Contraseña incorrecta",
                     context,
                     widget.height,
                     widget.width,
@@ -200,10 +229,10 @@ class _MyDialogContentState extends State<MyDialogContent> {
   Color _manageEyeColor(){
     Color finalColor;
 
-    if(_insertPassDialog){
+    if(_insertDeveloperPass){
       finalColor = _focused ? Colors.green[600] : Colors.green[900];
     } else {
-      if(_anyError){
+      if(_noError){
         finalColor = _focused ? Colors.green[600] : Colors.green[900];
       } else {
         finalColor = Colors.red;
@@ -225,7 +254,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      _currentPass = (prefs.getString('currentPass'));
+      _currentEncryptionPass = (prefs.getString('currentEncryptionPass'));
     });
   }
 
@@ -233,7 +262,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      prefs.setString('currentPass', widget.currentPass);
+      prefs.setString('currentEncryptionPass', widget.currentEncryptionPass);
     });
   }
 }
