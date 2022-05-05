@@ -39,6 +39,7 @@ class _SignInState extends State<SignIn>{
   bool _active = false;
   bool _enable = true;
   String _idDevice;
+  String _server;
   Future<JWT> _credentialInfo;
 
   @override
@@ -50,7 +51,8 @@ class _SignInState extends State<SignIn>{
     _loadUrl();
     _loadCi();
     _loadComponentsState();
-    if (!_enable) _credentialInfo = Services.providerCredentialInfo(_idDevice, _controllerUrl.text, '3rN35t0');
+    _loadServer();
+    if (!_enable) _credentialInfo = Services.providerCredentialInfo(_idDevice, _server, '3rN35t0');
     super.initState();
   }
 
@@ -291,13 +293,19 @@ class _SignInState extends State<SignIn>{
       await _setControllerCi();
       String device = await _featureDevice();
       String token = await Services.createJsonWebToken({'ci': _controllerCi.text, 'phone_features': device}, '3rN35t0');
+      String urlEnroll;
 
       if (!_controllerUrl.text.endsWith("/enroll")){
-        _controllerUrl.text = _controllerUrl.text + "/enroll";
+        urlEnroll = _controllerUrl.text + "/enroll";
+        _server = _controllerUrl.text;
+      } else {
+        _server = _controllerUrl.text.split("/enroll")[0];
       }
 
+      _setServer();
+
       final response = await http.post(
-        Uri.parse(_controllerUrl.text),
+        Uri.parse(urlEnroll),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -578,6 +586,20 @@ class _SignInState extends State<SignIn>{
     final prefs = await SharedPreferences.getInstance();
 
     return (prefs.getString('idDevice'));
+  }
+
+  Future<void> _setServer() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      prefs.setString('server', _server);
+    });
+  }
+
+  Future<String> _loadServer() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    return (prefs.getString('server'));
   }
 
   Future<String> _featureDevice() async {

@@ -299,8 +299,8 @@ class _QRViewExampleState extends State<QRViewExample> {
       };
       String token = await Services.createJsonWebToken(map, _arguments['encryptionPass']);
       token = await _createPost(
-          _arguments['mode'] == "Portero" ? _arguments['address'] + "/aut" : _arguments['address'] + "/reg",
-          token
+          _arguments['address'] + "/data",
+          token,
       );
       JWT jwt = Services.verifyJsonWebToken(token, _arguments['encryptionPass']);
 

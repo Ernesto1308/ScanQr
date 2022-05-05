@@ -33,7 +33,7 @@ class _ConfigurationState extends State<Configuration>{
   @override
   void initState() {
     super.initState();
-    _loadText();
+    _loadServer();
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
   }
@@ -257,11 +257,11 @@ class _ConfigurationState extends State<Configuration>{
     }
   }
 
-  void _loadText() async {
+  void _loadServer() async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      _controllerUrl.text = (prefs.getString('urlSaved') ?? "");
+      _controllerUrl.text = (prefs.getString('server') ?? "");
     });
   }
 
@@ -269,7 +269,7 @@ class _ConfigurationState extends State<Configuration>{
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      prefs.setString('urlSaved', _controllerUrl.text);
+      prefs.setString('server', _controllerUrl.text);
     });
   }
 
