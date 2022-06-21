@@ -1,4 +1,5 @@
 // @dart=2.9
+import 'dart:async';
 import 'dart:convert';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:device_information/device_information.dart';
@@ -36,11 +37,10 @@ class _SignInState extends State<SignIn>{
   double _height;
   double _width;
   bool _connected = true;
-  bool _active = false;
+  bool _activeToast = false;
   bool _enable = true;
   String _idDevice;
   String _server;
-  Future<JWT> _credentialInfo;
 
   @override
   void initState() {
@@ -52,7 +52,6 @@ class _SignInState extends State<SignIn>{
     _loadCi();
     _loadComponentsState();
     _loadServer();
-    if (!_enable) _credentialInfo = Services.providerCredentialInfo(_idDevice, _server, '3rN35t0');
     super.initState();
   }
 
@@ -221,50 +220,21 @@ class _SignInState extends State<SignIn>{
               ],
             ),
           ),
-          if(!_enable) FutureBuilder<JWT>(
-            future: _credentialInfo,
-            builder: (BuildContext context, AsyncSnapshot<JWT> snapshot) {
-              if(snapshot.connectionState != ConnectionState.done){
-                return Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.green[900],
-                    )
-                );
-              } else {
-                if (snapshot.data.payload["status"] == "success"){
-                  if (snapshot.data.payload["data"]["status_device"] == "1"){
-                    Future.delayed(
-                        const Duration(seconds: 1), () async {
-                      await _loadIdDevice();
-                      Navigator.pushNamed(
-                          context,
-                          '/url',
-                          arguments: {
-                            'before': "role",
-                            'idDevice': _idDevice
-                          }
-                      );
-                    }
-                    );
-                  } else if (snapshot.data.payload["data"]["status_device"] == "0"){
-                    Future.delayed(const Duration(seconds: 1), ()=> Services.showToastSystem(
-                        Colors.grey[350],
-                        const Duration(milliseconds: 4500),
-                        "Su credencial aún no está activa",
-                        context,
-                        _height,
-                        _width,
-                        0.25,
-                        0.1,
-                        0.1
-                    ));
-                    Services.notification();
-                  }
+          if(!_enable)
+            FutureBuilder<void>(
+              future: _manageRequestDisabledButton(),
+              builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
+                if(snapshot.connectionState != ConnectionState.done){
+                  return Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.green[900],
+                      )
+                  );
+                } else {
+                  return const Center();
                 }
-                return const Center();
-              }
-            },
-          ),
+              },
+            ),
         ],
       ),
     );
@@ -293,19 +263,20 @@ class _SignInState extends State<SignIn>{
       await _setControllerCi();
       String device = await _featureDevice();
       String token = await Services.createJsonWebToken({'ci': _controllerCi.text, 'phone_features': device}, '3rN35t0');
-      String urlEnroll;
+      String _urlEnroll;
 
       if (!_controllerUrl.text.endsWith("/enroll")){
-        urlEnroll = _controllerUrl.text + "/enroll";
+        _urlEnroll = _controllerUrl.text +"/enroll";
         _server = _controllerUrl.text;
       } else {
+        _urlEnroll = _controllerUrl.text;
         _server = _controllerUrl.text.split("/enroll")[0];
       }
 
       _setServer();
 
       final response = await http.post(
-        Uri.parse(urlEnroll),
+        Uri.parse(_urlEnroll),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -314,6 +285,7 @@ class _SignInState extends State<SignIn>{
         }),
       );
       token = jsonDecode(response.body)['token'];
+
       JWT jwt = Services.verifyJsonWebToken(token, '3rN35t0');
 
       setState(() {
@@ -329,69 +301,12 @@ class _SignInState extends State<SignIn>{
 
         _setControllerIdDevice();
 
-        JWT credential = await Services.providerCredentialInfo(_idDevice, _controllerUrl.text, '3rN35t0');
-
-        if (credential.payload["status"] == "success"){
-          if (credential.payload["data"]["status_device"] == "1"){
-            _setControllerEnroll();
-            Future.delayed(
-                const Duration(seconds: 1), () async {
-              await _loadIdDevice();
-              Navigator.pushNamed(
-                  context,
-                  '/url',
-                  arguments: {
-                    'before': "role",
-                    'idDevice': _idDevice
-                  }
-              );
-            }
-            );
-          } else if (credential.payload["data"]["status_device"] == "0"){
-            Future.delayed(const Duration(seconds: 1), ()=> Services.showToastSystem(
-                Colors.grey[350],
-                const Duration(milliseconds: 4500),
-                "Su credencial aún no está activa",
-                context,
-                _height,
-                _width,
-                0.25,
-                0.1,
-                0.1
-            ));
-            Services.notification();
-          }
-        }
+        _manageAnswerJWTCred();
       } else {
-        Services.showToastSystem(
-            Colors.grey[350],
-            const Duration(milliseconds: 2500),
-            "En estos momentos no está\n disponible su acceso, por favor\n contacte con un administrador",
-            context,
-            _height,
-            _width,
-            0.23,
-            0.1,
-            0.1
-        );
-        Services.notification();
+        _noAccessToast();
       }
-    } else if(!_connected && !_active){
-      _active = true;
-      Services.showToastSemaphore(
-          Colors.yellow[700],
-          const Duration(milliseconds: 2500),
-          Icons.wifi_off_outlined,
-          "El dispositivo no tiene\n acceso a Internet",
-          context,
-          _height,
-          _width,
-          0.205,
-          0.2,
-          0.2
-      );
-      Services.notification();
-      Future.delayed(const Duration(milliseconds: 2500), ()=> _active = false);
+    } else if(!_connected && !_activeToast){
+      _noInternetToast();
     }
   }
 
@@ -517,6 +432,94 @@ class _SignInState extends State<SignIn>{
     }
 
     return result;
+  }
+
+  Future<void> _manageAnswerJWTCred() async {
+    JWT credential = await Services.providerCredentialInfo(_idDevice, _server, '3rN35t0');
+
+    if (credential.payload["status"] == "success"){
+      if (credential.payload["data"]["status_device"] == "1"){
+        _setControllerEnroll();
+        Future.delayed(
+            const Duration(seconds: 1),
+                () async {
+              await _loadIdDevice();
+              Navigator.pushNamed(
+                  context,
+                  '/url',
+                  arguments: {
+                    'before': "enroll",
+                    'idDevice': _idDevice
+                  }
+              );
+            }
+        );
+      } else if (credential.payload["data"]["status_device"] == "0"){
+        Future.delayed(const Duration(seconds: 1), ()=> Services.showToastSystem(
+            Colors.grey[350],
+            const Duration(milliseconds: 4500),
+            "Su credencial aún no está activa",
+            context,
+            _height,
+            _width,
+            0.25,
+            0.1,
+            0.1
+        ));
+        Services.notification();
+      }
+    }
+  }
+
+  Future<void> _manageRequestDisabledButton() async {
+    Timer.periodic(const Duration(minutes: 1),
+              (timer) async {
+                _connected = await InternetConnectionChecker().hasConnection;
+
+                if (_connected && _idDevice != null){
+                  _manageAnswerJWTCred();
+                } else if (!_connected && !_activeToast){
+                  _noInternetToast();
+                } else if (!_activeToast){
+                  _noAccessToast();
+                }
+              }
+            );
+  }
+
+  void _noInternetToast(){
+    Services.showToastSemaphore(
+        Colors.yellow[700],
+        const Duration(milliseconds: 2500),
+        Icons.wifi_off_outlined,
+        "El dispositivo no tiene\n acceso a Internet",
+        context,
+        _height,
+        _width,
+        0.205,
+        0.2,
+        0.2
+    );
+    _activeToast = true;
+    Services.notification();
+    Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
+  }
+
+  void _noAccessToast(){
+    Services.showToastSystem(
+        Colors.grey[350],
+        const Duration(milliseconds: 2500),
+        "En estos momentos no está\n disponible su acceso, por favor\n contacte con un administrador",
+        context,
+        _height,
+        _width,
+        0.23,
+        0.1,
+        0.1
+    );
+    _activeToast = true;
+    Services.notification();
+    Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
   }
 
   void _setControllerEnroll() async {

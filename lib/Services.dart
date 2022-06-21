@@ -5,7 +5,6 @@ import 'package:dart_ping/dart_ping.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
 import 'package:http/http.dart' as http;
 
@@ -175,10 +174,10 @@ class Services{
     );
   }
 
-  static Future<JWT?> providerCredentialInfo(String idDevice, String url, String password) async {
+  static Future<JWT?> providerCredentialInfo(String idDevice, String server, String password) async {
     String token = await createJsonWebToken( {"idDevice" : idDevice}, password);
     final response = await http.post(
-      Uri.parse(url + "/active"),
+      Uri.parse(server + "/active"),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },

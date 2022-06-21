@@ -24,14 +24,14 @@ class _UrlState extends State<Url>{
   double _width;
   bool _connected = true;
   bool _activeToast = false;
-  final _defaultEncryptionPass = '3rN35t0';
-  String _newPass;
+  String _encryptionPass = '3rN35t0';
   String _url;
   String _idDevice;
   Map<String, String> _arguments = {};
 
   @override
   void initState() {
+    _setControllerPass();
     super.initState();
   }
 
@@ -48,7 +48,7 @@ class _UrlState extends State<Url>{
       _arguments = ModalRoute.of(context).settings.arguments as Map;
 
       if (_arguments != null){
-        if (_arguments['before'] == "role") {
+        if (_arguments['before'] == "enroll") {
           setState(() {
             _idDevice = _arguments['idDevice'];
           });
@@ -63,7 +63,7 @@ class _UrlState extends State<Url>{
 
           if (_arguments['newEncryptionPass'] != null){
             setState(() {
-              _newPass = _arguments['newEncryptionPass'];
+              _encryptionPass = _arguments['newEncryptionPass'];
             });
             _setControllerPass();
           }
@@ -264,7 +264,7 @@ class _UrlState extends State<Url>{
             _connected = await InternetConnectionChecker().hasConnection;
 
             if(_connected && _url != "" && _url != null) {
-              JWT credential = await Services.providerCredentialInfo(_idDevice, _url, _newPass ?? _defaultEncryptionPass);
+              JWT credential = await Services.providerCredentialInfo(_idDevice, _url, _encryptionPass);
 
               if(credential.payload["data"]["status_device"] == "1"){
                 Navigator.pushNamed(
@@ -274,12 +274,11 @@ class _UrlState extends State<Url>{
                       'address': _url,
                       'mode': _characterAccess.name,
                       'sendDataMode': _characterSendData.name,
-                      'encryptionPass': _newPass ?? _defaultEncryptionPass,
-                      'idDevice': _idDevice
+                      'encryptionPass': _encryptionPass,
+                      'idDevice': "48"/*_idDevice*/
                     }
                 );
               } else if (credential.payload["data"]["status_device"] == "-1" && !_activeToast){
-                _activeToast = true;
                 Services.showToastSystem(
                     Colors.grey[350],
                     const Duration(milliseconds: 2500),
@@ -291,11 +290,11 @@ class _UrlState extends State<Url>{
                     0.1,
                     0.1
                 );
+                _activeToast = true;
                 Services.notification();
                 Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
               }
             } else if(!_connected && !_activeToast){
-              _activeToast = true;
               Services.showToastSemaphore(
                   Colors.yellow[700],
                   const Duration(milliseconds: 2500),
@@ -308,10 +307,10 @@ class _UrlState extends State<Url>{
                   0.1,
                   0.1
               );
+              _activeToast = true;
               Services.notification();
               Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
             } else if (!_activeToast && (_url == null || _url == "")){
-              _activeToast = true;
               Services.showToastSystem(
                   Colors.grey[350],
                   const Duration(milliseconds: 2500),
@@ -323,6 +322,7 @@ class _UrlState extends State<Url>{
                   0.1,
                   0.1
               );
+              _activeToast = true;
               Services.notification();
               Future.delayed(const Duration(milliseconds: 2500), ()=> _activeToast = false);
             }
@@ -345,7 +345,7 @@ class _UrlState extends State<Url>{
           width: _width,
           secondButton: 'Aceptar',
           title: 'Contraseña de desarrollador',
-          currentEncryptionPass: _newPass ?? _defaultEncryptionPass,
+          currentEncryptionPass: _encryptionPass,
         );
       },
     );
@@ -387,7 +387,7 @@ class _UrlState extends State<Url>{
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      _newPass = (prefs.getString('newPass'));
+      _encryptionPass = (prefs.getString('encryptionPass'));
     });
   }
 
@@ -395,7 +395,7 @@ class _UrlState extends State<Url>{
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      prefs.setString('newPass', _newPass);
+      prefs.setString('encryptionPass', _encryptionPass);
     });
   }
 }

@@ -29,7 +29,6 @@ class _MyDialogContentState extends State<MyDialogContent> {
   bool _focused = false;
   bool _noError = true;
   bool _insertDeveloperPass = false;
-  bool _insertEncryptionPass = false;
   bool _changeEncryptionPass = false;
   final _formKey = GlobalKey<FormState>();
   final _developerPassword = "l3ktorqr*cuj@e";
@@ -43,8 +42,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.title == 'Contraseña actual de encriptación'){
-      _insertEncryptionPass = true;
+    if (widget.title == 'Inserte la contraseña actual de encriptación'){
     } else if (widget.secondButton == 'Aceptar'){
       _insertDeveloperPass = true;
     } else {
@@ -106,7 +104,7 @@ class _MyDialogContentState extends State<MyDialogContent> {
                     if (text.isEmpty){
                       result = "Este campo no puede estar vacío";
                     } else if (text == _currentEncryptionPass){
-                      result = "Por favor introduzca una contraseña\ndiferentre a la actual";
+                      result = "Por favor introduzca una contraseña\ndiferente a la actual";
                     }
 
                     return result;

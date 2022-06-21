@@ -134,7 +134,7 @@ class _ConfigurationState extends State<Configuration>{
           height: _height,
           width: _width,
           secondButton: 'Aceptar',
-          title: 'Contraseña actual de encriptación',
+          title: 'Inserte la contraseña actual de encriptación',
         );
       },
     );
@@ -148,7 +148,7 @@ class _ConfigurationState extends State<Configuration>{
       children: <Widget>[
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-          child: Text('Url',
+          child: Text('Servidor',
             style: TextStyle(fontSize: 17, color: Colors.black),
           ),
         ),

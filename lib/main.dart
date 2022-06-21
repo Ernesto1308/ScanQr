@@ -15,7 +15,7 @@ Future<void> main() async {
   }
   runApp(
     MaterialApp(
-      initialRoute: result ? '/url' : '/role',
+      initialRoute: result ? '/url' : '/enroll',
       routes: getApplicationRoutes(),
       debugShowCheckedModeBanner: false,
     ),
@@ -26,7 +26,7 @@ Future<void> main() async {
     return <String, Widget Function(BuildContext)>{
       '/url': (context) => const Url(),
       '/scanner': (context) => const QRViewExample(),
-      '/role': (context) => const SignIn(),
+      '/enroll': (context) => const SignIn(),
       '/configuration': (context) => const Configuration()
     };
   }

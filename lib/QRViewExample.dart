@@ -168,7 +168,7 @@ class _QRViewExampleState extends State<QRViewExample> {
               ),
             )
           )
-              : _arguments['sendDataMode'] != "Manual" ? _buildAutomaticPanel() : _buildRowDataScanned(),
+              : _arguments['sendDataMode'] != "Manual" ? _buildAutomaticPanel() : _buildManualPanel(),
           const Divider(
               color: Colors.white,
           ),
@@ -218,7 +218,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     );
   }
 
-  Widget _buildRowDataScanned(){
+  Widget _buildManualPanel(){
     Vibration.vibrate(duration: 150);
 
     return Row(
@@ -298,10 +298,7 @@ class _QRViewExampleState extends State<QRViewExample> {
         }
       };
       String token = await Services.createJsonWebToken(map, _arguments['encryptionPass']);
-      token = await _createPost(
-          _arguments['address'] + "/data",
-          token,
-      );
+      token = await _createPost(_arguments['address'] +"/data", token);
       JWT jwt = Services.verifyJsonWebToken(token, _arguments['encryptionPass']);
 
       if (jwt.payload['status'] == 'success'){
